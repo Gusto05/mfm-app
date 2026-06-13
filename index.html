@@ -115,10 +115,19 @@ body{background:#07091A;display:flex;justify-content:center;align-items:flex-sta
 #kb button{margin-top:8px;padding:7px 14px;border-radius:9px;background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.35);color:#F5A623;cursor:pointer;font-size:12px;font-family:var(--fb);font-weight:600}
 /* Insight card */
 .insight{background:linear-gradient(135deg,rgba(107,124,255,.15),rgba(176,122,255,.10));border:1.5px solid rgba(107,124,255,.45);border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:0 0 26px rgba(107,124,255,.18);animation:si .4s ease}
-.sqb{flex:1;background:var(--su);border:2px solid transparent;border-radius:11px;font-size:19px;padding:8px 2px;cursor:pointer;text-align:center}
-.sqb.on{border-color:var(--cy);background:rgba(56,200,245,.12);transform:scale(1.08)}
-.chip{padding:7px 11px;border-radius:18px;border:1px solid var(--bo);background:var(--su);color:var(--so);font-size:12px;cursor:pointer;font-family:var(--fb);margin:0 4px 6px 0}
+.sqb{flex:1;background:var(--su);border:2px solid transparent;border-radius:11px;padding:9px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:transform .15s,border-color .15s,background .15s}
+.sqb.on{border-color:var(--cy);background:rgba(56,200,245,.12);transform:scale(1.06)}
+.sqb svg{width:22px;height:22px}
+.chip{padding:7px 11px;border-radius:18px;border:1px solid var(--bo);background:var(--su);color:var(--so);font-size:12px;cursor:pointer;font-family:var(--fb);margin:0 4px 6px 0;display:inline-flex;align-items:center;gap:5px}
 .chip.on{border-color:var(--cy);background:rgba(56,200,245,.14);color:var(--cy);font-weight:600}
+.chip svg{width:13px;height:13px;flex-shrink:0}
+.mb svg{width:26px;height:26px}
+.mb{display:flex;flex-direction:column;align-items:center;gap:4px}
+.nb svg{width:20px;height:20px}
+svg{display:block;width:100%;height:100%}
+.sqb svg,.chip svg,.mb svg,.nb svg{width:auto;height:auto}
+.sqb svg{width:22px;height:22px}.chip svg{width:13px;height:13px}.mb svg{width:26px;height:26px}.nb svg{width:20px;height:20px}
+.wr-action{background:var(--su);border:1px solid var(--bo);border-left:3px solid var(--gr);border-radius:11px;padding:11px 13px;margin-bottom:8px}
 /* empty state */
 .es{display:flex;flex-direction:column;align-items:center;text-align:center;padding:32px 20px}
 </style>
@@ -133,10 +142,10 @@ body{background:#07091A;display:flex;justify-content:center;align-items:flex-sta
     </div>
     <div id="sc" class="sc"></div>
     <div id="nv" class="nv" style="display:none">
-      <button class="nb" data-s="d"><span class="ni">🏠</span><span class="nl">Home</span></button>
-      <button class="nb" data-s="t"><span class="ni">☀️</span><span class="nl">Plan</span></button>
-      <button class="nb" data-s="b"><span class="ni">📊</span><span class="nl">Berichte</span></button>
-      <button class="nb" data-s="set"><span class="ni">⚙️</span><span class="nl">Profil</span></button>
+      <button class="nb" data-s="d"><span class="ni" data-ic="home"></span><span class="nl">Home</span></button>
+      <button class="nb" data-s="t"><span class="ni" data-ic="sun"></span><span class="nl">Plan</span></button>
+      <button class="nb" data-s="b"><span class="ni" data-ic="chart"></span><span class="nl">Berichte</span></button>
+      <button class="nb" data-s="set"><span class="ni" data-ic="gear"></span><span class="nl">Profil</span></button>
     </div>
     <!-- Tutorial interaction blocker -->
     <div id="tut-block"></div>
@@ -154,6 +163,71 @@ body{background:#07091A;display:flex;justify-content:center;align-items:flex-sta
 </div>
 <script>
 let API_KEY='';
+
+// ── SVG ICON SYSTEM (schlank, modern, schnell) ──────────
+const IC={
+  // Mood faces (Energie/Stimmung) — Outline-Stil
+  mood:(i,c)=>{
+    const col=c||'currentColor';
+    const faces=[
+      // 0 sehr schlecht
+      `<circle cx="12" cy="12" r="9"/><path d="M8 15.5c1-1.2 2.4-1.8 4-1.8s3 .6 4 1.8"/><line x1="9" y1="9.5" x2="9.5" y2="9.5"/><line x1="14.5" y1="9.5" x2="15" y2="9.5"/>`,
+      // 1 schlecht
+      `<circle cx="12" cy="12" r="9"/><line x1="8.5" y1="15" x2="15.5" y2="14"/><line x1="9" y1="9.5" x2="9.5" y2="9.5"/><line x1="14.5" y1="9.5" x2="15" y2="9.5"/>`,
+      // 2 neutral
+      `<circle cx="12" cy="12" r="9"/><line x1="8.5" y1="14.5" x2="15.5" y2="14.5"/><line x1="9" y1="9.5" x2="9.5" y2="9.5"/><line x1="14.5" y1="9.5" x2="15" y2="9.5"/>`,
+      // 3 gut
+      `<circle cx="12" cy="12" r="9"/><path d="M8 14c1 1.2 2.4 1.8 4 1.8s3-.6 4-1.8"/><line x1="9" y1="9.5" x2="9.5" y2="9.5"/><line x1="14.5" y1="9.5" x2="15" y2="9.5"/>`,
+      // 4 super
+      `<circle cx="12" cy="12" r="9"/><path d="M7.5 13.5c1.2 1.8 2.8 2.7 4.5 2.7s3.3-.9 4.5-2.7"/><line x1="8.5" y1="9" x2="10" y2="9"/><line x1="14" y1="9" x2="15.5" y2="9"/>`
+    ];
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${faces[i]}</svg>`;
+  },
+  energy:(i)=>{
+    // Batterie-Level 0..4
+    const fill=['#FF6B75','#F5A623','#F5A623','#2DD4A0','#2DD4A0'][i];
+    const segs=i+1;
+    let bars='';
+    for(let k=0;k<5;k++){bars+=`<rect x="${4+k*3.2}" y="${14-k*0}" width="2.2" height="6" rx="1" fill="${k<segs?fill:'none'}" stroke="${k<segs?fill:'#47516E'}" stroke-width="1"/>`;}
+    return `<svg viewBox="0 0 24 24" fill="none">${bars}<path d="M13 4l-3 6h3l-1 5" stroke="${fill}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
+  },
+  // UI line icons
+  i:(name,c,w)=>{
+    const col=c||'currentColor',sw=w||1.8;
+    const P={
+      home:`<path d="M3 11l9-8 9 8"/><path d="M5 9.5V20h14V9.5"/>`,
+      sun:`<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>`,
+      chart:`<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>`,
+      gear:`<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>`,
+      moon:`<path d="M20 14.5A8 8 0 119.5 4 6.5 6.5 0 0020 14.5z"/>`,
+      wave:`<path d="M5 12c1.5-2 3-2 4.5 0M9.5 12c1.5-2 3-2 4.5 0M14 12c1.5-2 3-2 4.5 0"/><circle cx="12" cy="6" r="2"/>`,
+      flame:`<path d="M12 3c1 3-1.5 4-1.5 6.5A2.5 2.5 0 0012 12a3 3 0 003-3c2 1.5 3 4 3 6a6 6 0 11-12 0c0-3 2-5 3-7 .8-1.5 2-2.5 3-5z"/>`,
+      target:`<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="${col}"/>`,
+      phone:`<rect x="7" y="3" width="10" height="18" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/>`,
+      sleep:`<path d="M16 4h4l-4 5h4M3 12h4l-4 5h4"/>`,
+      clock:`<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`,
+      people:`<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><path d="M16 5.5a3 3 0 010 5.8M21 20c0-2.5-1.3-4.2-3.5-4.8"/>`,
+      gift:`<rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 13h18M12 9v12M12 9C9 9 7 5 9 4s3 3 3 5c0-2 1-4 3-5s.5 5-3 5"/>`,
+      book:`<path d="M4 4v15a1 1 0 001 1h14M6 4h12a1 1 0 011 1v13"/><line x1="9" y1="8" x2="15" y2="8"/>`,
+      run:`<circle cx="13" cy="5" r="2"/><path d="M11 8l-3 4 3 2 1 5M11 12l4 1 2 4M8 9l-3 1"/>`,
+      water:`<path d="M12 3c4 5 6 8 6 11a6 6 0 11-12 0c0-3 2-6 6-11z"/>`,
+      meditate:`<circle cx="12" cy="5" r="2"/><path d="M12 8v6M6 20c0-3 2.5-5 6-5s6 2 6 5M6 14l6 1 6-1"/>`,
+      salad:`<path d="M4 11h16a8 8 0 01-16 0z"/><path d="M12 11c0-3 2-5 5-5M12 11c-1-2-3-3-5-3"/>`,
+      hourglass:`<path d="M7 4h10M7 20h10M8 4c0 4 8 4 8 8s-8 4-8 8M16 4c0 4-8 4-8 8s8 4 8 8"/>`,
+      tired:`<circle cx="12" cy="12" r="9"/><path d="M8 10l2 1-2 1M16 10l-2 1 2 1M9 16h6"/>`,
+      chaos:`<path d="M4 8c2-2 4 2 6 0s4 2 6 0 4 2 4 2M4 14c2-2 4 2 6 0s4 2 6 0"/>`,
+      check:`<path d="M5 12l5 5L20 6"/>`,
+      repeat:`<path d="M4 9l3-3 3 3M7 6v8a3 3 0 003 3h7M20 15l-3 3-3-3M17 18v-8a3 3 0 00-3-3H7"/>`,
+      x:`<path d="M6 6l12 12M18 6L6 18"/>`,
+      brain:`<path d="M9 4a3 3 0 00-3 3 3 3 0 00-1 5 3 3 0 002 4 3 3 0 005 1V4.5A2 2 0 009 4zM15 4a3 3 0 013 3 3 3 0 011 5 3 3 0 01-2 4 3 3 0 01-5 1"/>`,
+      trophy:`<path d="M7 4h10v4a5 5 0 01-10 0zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3M10 14h4M9 20h6M12 14v6"/>`,
+      lightning:`<path d="M13 3L5 13h6l-1 8 8-11h-6z"/>`,
+      arrowRight:`<path d="M5 12h14M13 6l6 6-6 6"/>`,
+      sparkle:`<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>`
+    };
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${P[name]||''}</svg>`;
+  }
+};
 
 const QUOTES=[
   {t:'Wir sind das, was wir wiederholt tun.',a:'Aristoteles'},
@@ -176,7 +250,7 @@ const CHALLENGES=[
   'Schlaf diese Woche an 5 Tagen vor 23 Uhr ein.',
 ];
 
-const HSUGG=['💧 Wasser trinken','🏃 Sport','📵 Kein Handy bis 10h','📚 Lesen','🧘 Meditation','🥗 Gesund essen','😴 Vor 23h schlafen'];
+const HSUGG=['Wasser trinken','Sport','Kein Handy bis 10h','Lesen','Meditation','Gesund essen','Vor 23h schlafen'];
 
 const TSTEPS=[
   {ic:'🏠',t:'Dein Dashboard',d:'Herzlich willkommen! Das ist dein täglicher Ausgangspunkt — Stimmung, Streak, Monatsziele und dein Tagesplan, alles auf einen Blick.',tab:'d',sel:null,nb:'d'},
@@ -292,22 +366,23 @@ function rD(){
   const dn=S.tasks.filter(t=>t.ck).length,to=S.tasks.length,pt=to>0?Math.round((dn/to)*100):0;
   const q=QUOTES[S.qidx%QUOTES.length];
   const ch=CHALLENGES[S.chIdx%CHALLENGES.length];
-  const MOODS=[['😴','Müde'],['😐','Ok'],['🙂','Gut'],['😊','Super'],['🤩','Top']];
+  const MOODS=[['Müde'],['Ok'],['Gut'],['Super'],['Top']];
   const earned=S.ach.filter(a=>a.e);
   const lv=getLevel();
   return`${kb()}<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><div style="font-size:11px;color:var(--mu);margin-bottom:3px">${fmtDate()}</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;letter-spacing:-.5px">Hey ${n} <button id="wbtn">👋</button></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--pu));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:14px;color:#fff;flex-shrink:0">${n[0].toUpperCase()}</div><button id="rank-badge" style="background:rgba(0,0,0,.35);border:1px solid ${lv.col}55;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;color:${lv.col};cursor:pointer;font-family:var(--fb)">${lv.ic} ${lv.l} ›</button></div></div>
 ${getWeeklyCard()}
+${(new Date().getDay()===0&&S.history.length>=3)?`<div class="ca" style="background:linear-gradient(135deg,rgba(176,122,255,.12),rgba(107,124,255,.08));border-color:rgba(176,122,255,.3);cursor:pointer" id="open-weekly-sun"><div style="display:flex;align-items:center;gap:12px"><span style="width:28px;height:28px;display:inline-flex;color:var(--pu)">${IC.i('sparkle','#B07AFF',2)}</span><div style="flex:1"><div style="font-weight:700;font-size:13px;color:var(--pu)">Sonntag — Zeit für deinen Wochen-Rückblick</div><div style="font-size:11px;color:var(--so);margin-top:2px">Was lief, was du mitnimmst, dein Fokus für nächste Woche.</div></div><span style="color:var(--mu);font-size:18px">›</span></div></div>`:''}
 ${insightCard()}
-<div class="ca" style="padding:12px 14px"><div class="lb">WIE FÜHLST DU DICH GERADE?</div><div class="mood-row">${MOODS.map(([e,l],i)=>`<button class="mb${S.mood===i?' on':''}" data-md="${i}"><div>${e}</div><div style="font-size:9px;color:var(--mu);margin-top:3px;font-weight:600">${l}</div></button>`).join('')}</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--mu);font-weight:600">😴 Schlafen gegangen:</span><input class="slp" id="slpin" type="time" value="${S.sleep}"><span style="font-size:18px;margin-left:auto">${S.sleep?(S.sleep<='22:45'?'🌙':'⚠️'):'—'}</span></div></div>
+<div class="ca" style="padding:12px 14px"><div class="lb">WIE FÜHLST DU DICH GERADE?</div><div class="mood-row">${MOODS.map(([l],i)=>`<button class="mb${S.mood===i?' on':''}" data-md="${i}">${IC.mood(i,S.mood===i?'#6B7CFF':'#8B96BA')}<div style="font-size:9px;color:var(--mu);font-weight:600">${l}</div></button>`).join('')}</div><div style="display:flex;align-items:center;gap:8px"><span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mu);font-weight:600"><span style="width:15px;height:15px;display:inline-flex">${IC.i('moon','#8B96BA',1.8)}</span><span>Schlafen gegangen:</span></span><input class="slp" id="slpin" type="time" value="${S.sleep}"><span style="margin-left:auto;width:18px;height:18px;display:inline-flex">${S.sleep?(S.sleep<='22:45'?IC.i('moon','#2DD4A0',1.8):IC.i('clock','#F5A623',1.8)):'<span style=\"color:var(--mu)\">—</span>'}</span></div></div>
 <div style="background:rgba(107,124,255,.07);border:1px solid rgba(107,124,255,.14);border-radius:14px;padding:12px 14px;margin-bottom:10px"><div class="lb" style="color:var(--ac)">ZITAT DES TAGES</div><p style="font-size:12px;color:var(--tx);line-height:1.65;font-style:italic;margin-bottom:5px">"${q.t}"</p><div style="font-size:11px;color:var(--mu);font-weight:600">— ${q.a}</div></div>
 <div class="stk"><div style="font-size:36px;line-height:1">🔥</div><div style="flex:1"><div style="font-family:var(--fd);font-weight:800;font-size:30px;line-height:1;letter-spacing:-2px;color:var(--go)">${S.streak}</div><div style="font-size:12px;color:var(--so);margin-top:2px">Tage Streak</div></div><div>${!S.shieldUsed?`<button class="shb" id="shb">🛡 Shield</button>`:`<div style="font-size:11px;color:var(--mu);margin-top:6px">🛡 Benutzt</div>`}</div></div>
 ${S.monthGoals.some(g=>g.g)?`<div class="ca yl"><div class="lb" style="color:var(--go)">MONATSZIELE</div>${S.monthGoals.filter(g=>g.g).map(g=>`<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:var(--so)">${g.g}</span><span style="font-size:11px;color:${g.p>=70?'var(--gr)':g.p>=50?'var(--go)':'var(--ac)'};font-weight:700">${g.p}%</span></div><div class="pb"><div class="pf" style="width:${g.p}%;background:${g.p>=70?'var(--gr)':g.p>=50?'var(--go)':'var(--ac)'}"></div></div></div>`).join('')}</div>`:''}
 ${S.chAccepted?`<div class="ca cl"><div class="lb" style="color:var(--cy)">WOCHENCHALLENGE</div><div style="display:flex;align-items:flex-start;gap:10px"><p style="font-size:13px;color:var(--tx);line-height:1.55;flex:1">${ch}</p><div class="cb${S.chDone?' ck':''}" id="chcb" style="flex-shrink:0;margin-top:2px">${S.chDone?CHK:''}</div></div></div>`:`<div class="ca cl"><div class="lb" style="color:var(--cy)">WOCHENCHALLENGE</div><p style="font-size:12px;color:var(--so);line-height:1.55;margin-bottom:10px">${ch}</p><div style="display:flex;gap:8px"><button class="bt btc" id="chacc" style="flex:1;padding:9px;font-size:12px;margin:0">Annehmen ✓</button><button id="chskip" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;font-family:var(--fb);padding:9px">Überspringen</button></div></div>`}
 ${S.habits.length>0?`<div class="ca gl"><div class="lb" style="color:var(--gr)">GEWOHNHEITEN HEUTE</div>${S.habits.map((h,i)=>`<div class="hb"><div class="cb${h.ck?' ck':''}" data-hb="${i}">${h.ck?CHK:''}</div><span style="font-size:13px;color:${h.ck?'var(--mu)':'var(--tx)'};text-decoration:${h.ck?'line-through':''}">${h.t}</span></div>`).join('')}</div>`:''}
 ${to>0?`${pt===100?`<div class="done-banner"><div style="font-size:28px">🏆</div><div><div style="font-weight:700;font-size:13px;color:var(--gr)">Alles erledigt!</div><div style="font-size:11px;color:var(--so);margin-top:2px">${n}, du hast heute alles durchgezogen. 🔥</div></div></div>`:''}<div class="ca pl"><div class="lb" style="color:var(--pu)">HEUTE GEPLANT</div><div style="display:flex;justify-content:space-between;margin-bottom:7px"><span style="font-size:12px;color:var(--so)">${dn} von ${to}</span><span style="font-size:12px;color:${pt===100?'var(--gr)':'var(--pu)'};font-weight:700">${pt}%</span></div><div class="pb" style="margin-bottom:9px"><div class="pf" style="width:${pt}%;background:${pt===100?'var(--gr)':'var(--pu)'}"></div></div>${tl(S.tasks,'t')}</div>`:`<div class="ca pl es"><div style="font-size:36px;margin-bottom:10px">📋</div><p style="font-size:13px;color:var(--mu);line-height:1.6">Noch kein Tagesplan.<br>Geh zum <strong style="color:var(--tx)">Plan-Tab</strong> →</p></div>`}
-<div class="cr${S.tg?' dn':''}" id="mcta"><div style="font-size:22px">${S.tg?'✅':'☀️'}</div><div style="flex:1"><div style="font-weight:600;font-size:13px;color:${S.tg?'var(--gr)':'var(--tx)'}">${S.tg?'Morgen Check-in':'Tagesplan erstellen'}</div><div style="font-size:11px;color:var(--mu);margin-top:2px">${S.tg?'Erledigt ✓':'Im Plan-Tab →'}</div></div>${!S.tg?'<div style="color:var(--mu);font-size:18px">›</div>':''}</div>
-<div class="cr${S.md?' dn':''}" id="midcta"><div style="font-size:22px">${S.md?'✅':'🌤️'}</div><div style="flex:1"><div style="font-weight:600;font-size:13px;color:${S.md?'var(--gr)':'var(--tx)'}">Mittag Check-in</div><div style="font-size:11px;color:var(--mu);margin-top:2px">${S.md?'Erledigt ✓':'Halbzeit-Reflexion · 1 Min'}</div></div>${!S.md?'<div style="color:var(--mu);font-size:18px">›</div>':''}</div>
-<div class="cr${S.ed?' dn':''}" id="evecta"><div style="font-size:22px">${S.ed?'✅':'🌙'}</div><div style="flex:1"><div style="font-weight:600;font-size:13px;color:${S.ed?'var(--gr)':'var(--tx)'}">Abend Check-in</div><div style="font-size:11px;color:var(--mu);margin-top:2px">${S.ed?'Erledigt ✓':'Tag reflektieren · ~8 Min'}</div></div>${!S.ed?'<div style="color:var(--mu);font-size:18px">›</div>':''}</div>
+<div class="cr${S.tg?' dn':''}" id="mcta"><span style="width:22px;height:22px;display:inline-flex;color:${S.tg?'#2DD4A0':'#F5A623'}">${S.tg?IC.i('check','#2DD4A0',2.2):IC.i('sun','#F5A623',1.8)}</span><div style="flex:1"><div style="font-weight:600;font-size:13px;color:${S.tg?'var(--gr)':'var(--tx)'}">${S.tg?'Morgen Check-in':'Tagesplan erstellen'}</div><div style="font-size:11px;color:var(--mu);margin-top:2px">${S.tg?'Erledigt':'Im Plan-Tab →'}</div></div>${!S.tg?'<div style="color:var(--mu);font-size:18px">›</div>':''}</div>
+<div class="cr${S.md?' dn':''}" id="midcta"><span style="width:22px;height:22px;display:inline-flex;color:${S.md?'#2DD4A0':'#38C8F5'}">${S.md?IC.i('check','#2DD4A0',2.2):IC.i('clock','#38C8F5',1.8)}</span><div style="flex:1"><div style="font-weight:600;font-size:13px;color:${S.md?'var(--gr)':'var(--tx)'}">Mittag Check-in</div><div style="font-size:11px;color:var(--mu);margin-top:2px">${S.md?'Erledigt':'Halbzeit-Reflexion · 1 Min'}</div></div>${!S.md?'<div style="color:var(--mu);font-size:18px">›</div>':''}</div>
+<div class="cr${S.ed?' dn':''}" id="evecta"><span style="width:22px;height:22px;display:inline-flex;color:${S.ed?'#2DD4A0':'#B07AFF'}">${S.ed?IC.i('check','#2DD4A0',2.2):IC.i('moon','#B07AFF',1.8)}</span><div style="flex:1"><div style="font-weight:600;font-size:13px;color:${S.ed?'var(--gr)':'var(--tx)'}">Abend Check-in</div><div style="font-size:11px;color:var(--mu);margin-top:2px">${S.ed?'Erledigt':'Tag reflektieren · ~8 Min'}</div></div>${!S.ed?'<div style="color:var(--mu);font-size:18px">›</div>':''}</div>
 ${earned.length>0?`<div class="ca" style="background:rgba(245,166,35,.04);border-color:rgba(245,166,35,.15);margin-top:4px"><div class="lb" style="color:var(--go)">🏆 ACHIEVEMENTS</div><div>${earned.map(a=>`<span class="bdg on">${a.ic} ${a.t}</span>`).join('')}</div></div>`:''}
 ${S.partner?`<div class="ca cl"><div class="lb" style="color:var(--cy)">👥 ACCOUNTABILITY PARTNER</div><div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center"><div style="text-align:center;background:rgba(107,124,255,.07);border-radius:12px;padding:10px 8px;border:1px solid rgba(107,124,255,.2)"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--pu));display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:13px;color:#fff;margin:0 auto 5px">${n[0].toUpperCase()}</div><div style="font-size:12px;font-weight:600;color:var(--tx)">${n}</div><div style="font-size:11px;color:var(--mu);margin-top:1px">Du</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;color:${S.ed?'var(--ac)':'var(--mu)'};margin-top:5px">${S.ed?'?':'—'}</div><div style="font-size:11px;color:var(--mu)">Heute</div></div><div style="text-align:center;font-size:11px;color:var(--mu);font-weight:700">VS</div><div style="text-align:center;background:rgba(56,200,245,.07);border-radius:12px;padding:10px 8px;border:1px solid rgba(56,200,245,.2)"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--cy),#1AAFD8);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:13px;color:#000;margin:0 auto 5px">${S.partner.name[0]}</div><div style="font-size:12px;font-weight:600;color:var(--tx)">${S.partner.name}</div><div style="font-size:11px;color:var(--mu);margin-top:1px">🔥 ${S.partner.streak}</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;color:${S.partner.score>=8?'var(--gr)':S.partner.score>=6?'var(--ac)':'var(--so)'};margin-top:5px">${S.partner.score}/10</div><div style="font-size:11px;color:var(--mu)">Heute</div></div></div></div>`:''}`;
 }
@@ -348,15 +423,15 @@ function rEve(){
   const ph=S.ep,n=S.profile.name||'du';
   if(ph==='intro')return`<button class="bk" id="bkeve">← Zurück</button><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:20px 0"><div style="font-size:60px;margin-bottom:16px">🌙</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;letter-spacing:-.5px;margin-bottom:8px">Abend Check-in</div><p style="color:var(--so);font-size:13px;line-height:1.7;max-width:210px;margin-bottom:36px">10 Fragen.<br>Dein Tag im Rückspiegel.<br><span style="color:var(--tx)">Ehrlich. Für dich.</span></p><button class="bt btp" id="eves" style="max-width:220px">Los geht's →</button></div>`;
   if(ph==='struct'){const st=S.evStruct;const un=S.tasks.filter(t=>!t.ck).length;
-    const DIS=['📱 Handy','😴 Müdigkeit','👥 Soziales','⏳ Aufschieben','🌀 Plan-Chaos','— Nichts'];
-    const FAILS=['📱 Handy','😴 Zu müde','⏰ Keine Zeit','🔁 Aufgeschoben','😵 Zu schwer','🤷 Vergessen'];
+    const DIS=[['phone','Handy'],['tired','Müdigkeit'],['people','Soziales'],['hourglass','Aufschieben'],['chaos','Plan-Chaos'],['check','Nichts']];
+    const FAILS=[['phone','Handy'],['tired','Zu müde'],['clock','Keine Zeit'],['repeat','Aufgeschoben'],['lightning','Zu schwer'],['x','Vergessen']];
     return`<button class="bk" id="bkeve">← Zurück</button>
 <div class="lb" style="color:var(--cy)">SCHNELL-CHECK · 30 SEK</div>
 <div class="h2">Erst die Fakten${n!='du'?', '+n:''}.</div>
-<div class="ca" style="margin-bottom:10px"><div class="lb">😴 SCHLAFQUALITÄT LETZTE NACHT</div><div style="display:flex;gap:5px">${['😫','😕','😐','🙂','🤩'].map((e,i)=>`<button class="sqb${st.slq===i+1?' on':''}" data-slq="${i+1}">${e}</button>`).join('')}</div></div>
-<div class="ca" style="margin-bottom:10px"><div class="lb">⚡ ENERGIE HEUTE</div><div style="display:flex;gap:5px">${['🪫','🔋','🔋🔋','⚡','⚡⚡'].map((e,i)=>`<button class="sqb${st.en===i+1?' on':''}" data-en="${i+1}" style="font-size:13px">${e}</button>`).join('')}</div></div>
-<div class="ca" style="margin-bottom:10px"><div class="lb">🌀 GRÖSSTER STÖRFAKTOR HEUTE</div><div style="display:flex;flex-wrap:wrap">${DIS.map(d=>`<button class="chip${st.dis===d?' on':''}" data-dis="${d}">${d}</button>`).join('')}</div></div>
-${un>0?`<div class="ca yl" style="margin-bottom:10px"><div class="lb" style="color:var(--go)">⚠ ${un} AUFGABE${un>1?'N':''} OFFEN — WAS KAM DAZWISCHEN?</div><div style="display:flex;flex-wrap:wrap">${FAILS.map(f=>`<button class="chip${st.fail===f?' on':''}" data-fail="${f}">${f}</button>`).join('')}</div></div>`:''}
+<div class="ca" style="margin-bottom:10px"><div class="lb">SCHLAFQUALITÄT LETZTE NACHT</div><div style="display:flex;gap:5px">${[0,1,2,3,4].map(i=>`<button class="sqb${st.slq===i+1?' on':''}" data-slq="${i+1}">${IC.mood(i,st.slq===i+1?'#38C8F5':'#8B96BA')}</button>`).join('')}</div></div>
+<div class="ca" style="margin-bottom:10px"><div class="lb">ENERGIE HEUTE</div><div style="display:flex;gap:5px">${[0,1,2,3,4].map(i=>`<button class="sqb${st.en===i+1?' on':''}" data-en="${i+1}">${IC.energy(i)}</button>`).join('')}</div></div>
+<div class="ca" style="margin-bottom:10px"><div class="lb">GRÖSSTER STÖRFAKTOR HEUTE</div><div style="display:flex;flex-wrap:wrap">${DIS.map(([ic,l])=>`<button class="chip${st.dis===l?' on':''}" data-dis="${l}">${IC.i(ic,st.dis===l?'#38C8F5':'#8B96BA',1.8)}${l}</button>`).join('')}</div></div>
+${un>0?`<div class="ca yl" style="margin-bottom:10px"><div class="lb" style="color:var(--go)">${un} AUFGABE${un>1?'N':''} OFFEN — WAS KAM DAZWISCHEN?</div><div style="display:flex;flex-wrap:wrap">${FAILS.map(([ic,l])=>`<button class="chip${st.fail===l?' on':''}" data-fail="${l}">${IC.i(ic,st.fail===l?'#38C8F5':'#8B96BA',1.8)}${l}</button>`).join('')}</div></div>`:''}
 <button class="bt btp" id="ev-struct-go"${(!st.slq||!st.en)?' disabled':''}>Weiter zu den Fragen →</button>
 <p style="font-size:11px;color:var(--mu);text-align:center">Diese Daten machen deine Muster-Analyse möglich.</p>`;}
   if(ph==='q'){const qi=S.eq,pct=Math.round((qi/EQ.length)*100);return`<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:12px;color:var(--mu)">Frage ${qi+1} von ${EQ.length}</span><span style="font-size:12px;color:var(--ac);font-weight:700">${pct}%</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:var(--ac)"></div></div></div><div style="font-family:var(--fd);font-weight:700;font-size:17px;line-height:1.45;margin-bottom:16px">${EQ[qi]}</div><textarea class="ta" id="eveta" placeholder="Deine Antwort...">${S.ec}</textarea><div style="margin-top:10px"><button class="bt btp" id="evenx"${S.ec.length<2?' disabled':''}>${qi===EQ.length-1?'Auswerten →':'Weiter →'}</button></div>`;}
@@ -365,16 +440,84 @@ ${un>0?`<div class="ca yl" style="margin-bottom:10px"><div class="lb" style="col
 }
 
 // ── REPORTS
+// SVG-Liniendiagramm der Score-Entwicklung
+function lineChart(data, w, h){
+  if(data.length<2)return'';
+  const pad=8, cw=w-pad*2, ch=h-pad*2;
+  const max=10, min=0;
+  const pts=data.map((v,i)=>{
+    const x=pad+(cw*i/(data.length-1));
+    const y=pad+ch-(ch*(v-min)/(max-min));
+    return [x,y];
+  });
+  const path=pts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  const area=path+`L${pts[pts.length-1][0].toFixed(1)} ${(h-pad).toFixed(1)}L${pad} ${(h-pad).toFixed(1)}Z`;
+  const dots=pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.5" fill="#6B7CFF"/>`).join('');
+  return`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px;display:block">
+    <defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B7CFF" stop-opacity="0.3"/><stop offset="1" stop-color="#6B7CFF" stop-opacity="0"/></linearGradient></defs>
+    ${[2.5,5,7.5].map(v=>{const y=pad+ch-(ch*v/10);return`<line x1="${pad}" y1="${y.toFixed(1)}" x2="${w-pad}" y2="${y.toFixed(1)}" stroke="#1C2345" stroke-width="1"/>`;}).join('')}
+    <path d="${area}" fill="url(#lg)"/>
+    <path d="${path}" fill="none" stroke="#6B7CFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}
+  </svg>`;
+}
+
+// Ziel-Fortschritt berechnen (0–100%) — aus Konsistenz, Score-Trend, Streak
+function goalProgress(){
+  const H=S.history;
+  if(H.length===0)return{pct:0,label:'Noch keine Daten',detail:'Mach deinen ersten Check-in.'};
+  const avg=H.reduce((a,h)=>a+h.s,0)/H.length;
+  const consistency=Math.min(1,H.length/30); // 30 Tage = volle Konsistenz
+  const scoreComp=avg/10;
+  const streakComp=Math.min(1,S.streak/21);
+  const recent=H.slice(-7),older=H.slice(-14,-7);
+  let trend=0;
+  if(older.length>0){const r=recent.reduce((a,h)=>a+h.s,0)/recent.length,o=older.reduce((a,h)=>a+h.s,0)/older.length;trend=Math.max(0,Math.min(1,(r-o+2)/4));}
+  else trend=0.5;
+  const pct=Math.round((consistency*0.3+scoreComp*0.35+streakComp*0.2+trend*0.15)*100);
+  let label,detail;
+  if(pct>=80){label='Fast am Ziel!';detail='Du lebst dein System bereits. Weiter so.';}
+  else if(pct>=55){label='Auf gutem Weg';detail='Dein System trägt dich. Bleib dran.';}
+  else if(pct>=30){label='Du baust auf';detail='Die Grundlagen entstehen. Konsistenz ist jetzt alles.';}
+  else{label='Am Anfang';detail='Jeder Check-in bringt dich näher. Der Anfang ist der schwerste Teil.';}
+  return{pct,label,detail,avg:avg.toFixed(1)};
+}
+
 function rB(){
-  if(!S.history.length)return`<div class="lb" style="color:var(--pu)">BERICHTE</div><div class="es"><div style="font-size:56px;margin-bottom:16px">📊</div><div style="font-family:var(--fd);font-weight:700;font-size:20px;margin-bottom:10px">Noch keine Daten</div><p style="font-size:13px;color:var(--mu);line-height:1.65">Schließe deinen ersten Abend-Check-in ab — dann erscheint hier deine Entwicklung über Zeit.</p></div>`;
+  if(!S.history.length)return`<div class="lb" style="color:var(--pu)">BERICHTE</div><div class="es"><div style="width:56px;height:56px;margin-bottom:16px;color:var(--mu)">${IC.i('chart','#47516E',1.5)}</div><div style="font-family:var(--fd);font-weight:700;font-size:20px;margin-bottom:10px">Noch keine Daten</div><p style="font-size:13px;color:var(--mu);line-height:1.65">Schließe deinen ersten Abend-Check-in ab — dann erscheint hier deine Entwicklung über Zeit.</p></div>`;
   const h7=S.history.slice(-7);
   const avg=(S.history.reduce((a,h)=>a+h.s,0)/S.history.length).toFixed(1);
-  const ins=buildInsights();
+  const gp=goalProgress();
+  const last14=S.history.slice(-14);
   return`<div class="lb" style="color:var(--pu)">BERICHTE</div><div class="h2">Deine Entwicklung</div>
-${sg([{l:'Ø Score',v:avg,c:'var(--ac)'},{l:'Einträge',v:S.history.length,c:'var(--pu)'},{l:'Streak',v:S.streak+'🔥',c:'var(--go)'}])}
-<div class="ca"><div class="lb">LETZTE 7 TAGE</div>${bc(h7.map(h=>h.s),h7.map(h=>h.date.slice(-5)))}</div>
-<div class="ca al"><div class="lb" style="color:var(--ac)">VERLAUF</div>${h7.slice().reverse().map(h=>`<div class="dr"><span>${h.mood!==null?['😴','😐','🙂','😊','🤩'][h.mood]:'—'}</span><span style="min-width:58px;color:var(--mu);font-size:11px">${h.date}</span><span style="font-weight:600;color:${h.s>=8?'var(--gr)':h.s>=6?'var(--ac)':'var(--so)'}">${h.s}/10</span><span style="margin-left:auto;font-size:11px;color:var(--mu)">${h.sleep||'—'}</span></div>`).join('')}</div>
-${ins?`<div class="ca pl"><div class="lb" style="color:var(--pu)">📈 MUSTER-EINBLICKE</div><p style="font-size:13px;color:var(--so);line-height:1.78;margin:0">${ins}</p></div>`:''}`;
+
+<!-- ZIEL-FORTSCHRITT -->
+<div class="ca pl" style="margin-bottom:10px"><div class="lb" style="color:var(--pu)">WEG ZU DEINEM ZIEL</div>
+${S.profile.goal?`<p style="font-size:12px;color:var(--so);line-height:1.5;margin-bottom:12px;font-style:italic">"${S.profile.goal}"</p>`:''}
+<div class="goal-ring-wrap">
+  <div style="position:relative;width:74px;height:74px;flex-shrink:0">
+    <svg viewBox="0 0 74 74" style="width:74px;height:74px;transform:rotate(-90deg)">
+      <circle cx="37" cy="37" r="32" fill="none" stroke="var(--bo)" stroke-width="6"/>
+      <circle cx="37" cy="37" r="32" fill="none" stroke="var(--pu)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(2*Math.PI*32).toFixed(1)}" stroke-dashoffset="${(2*Math.PI*32*(1-gp.pct/100)).toFixed(1)}"/>
+    </svg>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:18px;color:var(--pu)">${gp.pct}%</div>
+  </div>
+  <div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:15px;color:var(--tx);margin-bottom:3px">${gp.label}</div><div style="font-size:12px;color:var(--mu);line-height:1.5">${gp.detail}</div></div>
+</div></div>
+
+${sg([{l:'Ø Score',v:avg,c:'var(--ac)'},{l:'Einträge',v:S.history.length,c:'var(--pu)'},{l:'Streak',v:S.streak,c:'var(--go)'}])}
+
+<!-- LINIENDIAGRAMM -->
+<div class="ca"><div class="lb">SCORE-ENTWICKLUNG ${last14.length>7?'(14 TAGE)':'(LETZTE TAGE)'}</div>${lineChart(last14.map(h=>h.s),330,90)}<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:2px"><span>${last14[0].date.slice(0,5)}</span><span>heute</span></div></div>
+
+<!-- WOCHEN-RÜCKBLICK BUTTON -->
+<button class="bt btp" id="open-weekly" style="display:flex;align-items:center;justify-content:center;gap:8px"><span style="width:18px;height:18px;display:inline-flex">${IC.i('sparkle','#fff',2)}</span>Wochen-Rückblick & Tipps</button>
+
+<!-- MUSTER -->
+${insightCard()}
+
+<!-- VERLAUF -->
+<div class="ca al"><div class="lb" style="color:var(--ac)">VERLAUF</div>${h7.slice().reverse().map(h=>`<div class="dr"><span style="width:18px;height:18px;display:inline-flex">${h.mood!==null&&h.mood!==undefined?IC.mood(h.mood,'#8B96BA'):'—'}</span><span style="min-width:54px;color:var(--mu);font-size:11px">${h.date}</span><span style="font-weight:600;color:${h.s>=8?'var(--gr)':h.s>=6?'var(--ac)':'var(--so)'}">${h.s}/10</span><span style="margin-left:auto;font-size:11px;color:var(--mu)">${h.sleep||'—'}</span></div>`).join('')}</div>`;
 }
 
 function buildInsights(){
@@ -456,6 +599,95 @@ ${!API_KEY?'':''}
   <button onclick="clearAllData()" style="width:100%;padding:11px;border-radius:12px;background:rgba(255,107,117,.08);border:1px solid rgba(255,107,117,.2);color:var(--rd);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">🗑 Alle Daten löschen & neu starten</button>
   <p style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;line-height:1.5">Alle gespeicherten Daten werden unwiderruflich gelöscht.</p>
 </div>`;
+}
+
+// ── WOCHEN-RÜCKBLICK ────────────────────────────────────
+function buildWeeklyReview(){
+  const H=S.history;const w=H.slice(-7);const prev=H.slice(-14,-7);
+  const avg=w.length?w.reduce((a,h)=>a+h.s,0)/w.length:0;
+  const pAvg=prev.length?prev.reduce((a,h)=>a+h.s,0)/prev.length:null;
+  const ins=analyze();
+  const gp=goalProgress();
+  // Lernpunkte aus Fehlern
+  const fails=w.filter(h=>h.fail).map(h=>h.fail);
+  const diss=w.filter(h=>h.dis&&h.dis!=='Nichts').map(h=>h.dis);
+  const lessons=[];
+  if(fails.length){const cnt={};fails.forEach(f=>cnt[f]=(cnt[f]||0)+1);const t=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];lessons.push(`Diese Woche scheiterten Aufgaben ${t[1]}× an "${t[0]}". Nächste Woche: plane eine konkrete Gegenmaßnahme dafür ein.`);}
+  if(diss.length){const cnt={};diss.forEach(d=>cnt[d]=(cnt[d]||0)+1);const t=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];if(t[1]>=2)lessons.push(`"${t[0]}" war dein häufigster Störfaktor. Eine feste Regel dagegen (z.B. Handy in anderen Raum) wirkt stärker als Willenskraft.`);}
+  if(ins.length)lessons.push(ins[0].txt);
+  return{avg,pAvg,ins,gp,lessons,w,trend:pAvg!==null?avg-pAvg:null};
+}
+
+async function openWeekly(){
+  const ov=document.getElementById('rank-ov');if(!ov)return;
+  const r=buildWeeklyReview();
+  const n=S.profile.name||'du';
+  const trendTxt=r.trend===null?'Deine erste Woche — der Maßstab für alles Weitere.':r.trend>0.3?`+${r.trend.toFixed(1)} besser als letzte Woche`:r.trend<-0.3?`${r.trend.toFixed(1)} unter letzter Woche`:'stabil zur Vorwoche';
+  const trendCol=r.trend===null?'var(--ac)':r.trend>0.3?'var(--gr)':r.trend<-0.3?'var(--go)':'var(--so)';
+
+  ov.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-family:var(--fd);font-weight:800;font-size:20px">Dein Wochen-Rückblick</div>
+      <button id="wk-close" style="background:var(--su);border:1px solid var(--bo);border-radius:50%;width:32px;height:32px;color:var(--mu);font-size:16px;cursor:pointer;font-family:var(--fb)">×</button>
+    </div>
+    <div id="wk-body">
+      <div class="ca" style="text-align:center;padding:18px"><div style="width:30px;height:30px;margin:0 auto 10px;color:var(--ac);animation:cbp 1s ease infinite">${IC.i('sparkle','#6B7CFF',2)}</div><div style="font-size:13px;color:var(--mu)">${API_KEY?'Dein Coach analysiert deine Woche...':'Werte deine Woche aus...'}</div></div>
+    </div>`;
+  ov.classList.add('open');
+  document.getElementById('wk-close').onclick=()=>ov.classList.remove('open');
+
+  // Build body content
+  let coachText='';
+  if(API_KEY){
+    const ctx=`${n}, Ziel: "${S.profile.goal||'nicht gesetzt'}". Diese Woche: Ø Score ${r.avg.toFixed(1)}/10${r.pAvg!==null?` (Vorwoche ${r.pAvg.toFixed(1)})`:''}. Ziel-Fortschritt: ${r.gp.pct}%. Erkenntnisse: ${r.lessons.join(' | ')||'keine klaren Muster'}.`;
+    const sys=sysP()+' Schreibe einen motivierenden Wochen-Rückblick (4-5 Sätze): 1) Würdige konkret was diese Woche gut lief, 2) benenne das wichtigste Lernfeld aus den Fehlern, 3) gib EINEN konkreten Fokus für nächste Woche der zum Ziel führt, 4) motiviere zum Dranbleiben — auch wenn wenig Fortschritt sichtbar ist. Sprich '+n+' direkt an.';
+    const resp=await ai([{role:'user',content:ctx}],sys);
+    coachText=(resp===null)?localWeeklyText(r,n):resp;
+  }else{
+    coachText=localWeeklyText(r,n);
+  }
+
+  const body=document.getElementById('wk-body');
+  if(!body)return;
+  body.innerHTML=`
+    <!-- Score + Trend -->
+    <div class="ca" style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:14px">
+      <div style="text-align:center"><div style="font-family:var(--fd);font-weight:800;font-size:34px;color:var(--ac);line-height:1">${r.avg.toFixed(1)}</div><div style="font-size:10px;color:var(--mu)">Ø Score</div></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600;color:${trendCol};margin-bottom:6px">${trendTxt}</div>${lineChart(r.w.map(h=>h.s),200,46)}</div>
+    </div></div>
+    <!-- Coach Text -->
+    <div class="insight" style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="width:18px;height:18px;display:inline-flex">${IC.i(S.mentor==='streng'?'lightning':'wave','#6B7CFF',2)}</span><span class="lb" style="margin-bottom:0;color:var(--ac)">${S.mentor==='streng'?'DEIN COACH':'DEIN MENTOR'}</span></div><p style="font-size:13px;color:var(--tx);line-height:1.78;margin:0">${coachText}</p></div>
+    <!-- Lessons -->
+    ${r.lessons.length?`<div class="ca yl" style="margin-bottom:10px"><div class="lb" style="color:var(--go)">WAS DU MITNIMMST</div>${r.lessons.map(l=>`<div class="wr-action" style="border-left-color:var(--go)"><div style="display:flex;gap:8px;align-items:flex-start"><span style="width:15px;height:15px;display:inline-flex;flex-shrink:0;margin-top:2px;color:var(--go)">${IC.i('check','#F5A623',2)}</span><span style="font-size:12px;color:var(--so);line-height:1.6">${l}</span></div></div>`).join('')}</div>`:''}
+    <!-- Goal progress -->
+    <div class="ca pl" style="margin-bottom:10px"><div class="lb" style="color:var(--pu)">DEIN ZIEL-FORTSCHRITT</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;color:var(--so)">${r.gp.label}</span><span style="font-size:12px;color:var(--pu);font-weight:700">${r.gp.pct}%</span></div>
+      <div class="pb"><div class="pf" style="width:${r.gp.pct}%;background:var(--pu)"></div></div>
+      <p style="font-size:11px;color:var(--mu);margin-top:8px;line-height:1.5">${r.gp.detail}</p>
+    </div>
+    <button class="bt btg" id="wk-done">Verstanden — neue Woche! →</button>`;
+  const wd=document.getElementById('wk-done');if(wd)wd.onclick=()=>ov.classList.remove('open');
+}
+
+function localWeeklyText(r,n){
+  const x=S.mentor==='streng';const o=[];
+  // 1) Würdigung
+  if(r.avg>=7.5)o.push(x?`${n}, Ø ${r.avg.toFixed(1)} diese Woche — starkes Niveau. Genau das ist der Standard.`:`${n}, was für eine Woche — Ø ${r.avg.toFixed(1)}! Du darfst stolz auf dich sein.`);
+  else if(r.avg>=5)o.push(x?`Ø ${r.avg.toFixed(1)} diese Woche. Solide Basis, aber du weißt, dass mehr geht.`:`${n}, Ø ${r.avg.toFixed(1)} — eine ehrliche, durchschnittliche Woche. Das ist völlig okay.`);
+  else o.push(x?`Ø ${r.avg.toFixed(1)}. Das war keine starke Woche, ${n}. Lass uns ehrlich draufschauen.`:`${n}, diese Woche war schwer — Ø ${r.avg.toFixed(1)}. Und trotzdem bist du hier und schaust zurück. Das zählt mehr, als du denkst.`);
+  // 2) Lernfeld
+  if(r.lessons.length)o.push('Dein wichtigstes Lernfeld: '+r.lessons[0]);
+  // 3) Trend / Motivation auch ohne Fortschritt (Omas Punkt)
+  if(r.trend!==null&&r.trend<0){
+    o.push(x?'Der Score ist gefallen — aber Rückschritte gehören dazu. Entscheidend ist, dass du nicht aufhörst.':`Auch wenn die Zahlen diese Woche nicht nach oben zeigten: Fortschritt ist nicht immer sichtbar. Du baust gerade etwas auf, das unter der Oberfläche wächst — bleib dran, ${n}.`);
+  }else if(r.trend===null){
+    o.push(x?'Das ist dein Startpunkt. Ab hier zählt jede Woche.':`Dies ist erst der Anfang deiner Reise, ${n}. Jeder fängt genau hier an.`);
+  }else{
+    o.push(x?'Nächste Woche: gleiche Disziplin, ein Stück konsequenter.':`Nimm den Schwung mit in die neue Woche, ${n} — du hast bewiesen, dass du es kannst.`);
+  }
+  // 4) konkreter Fokus
+  o.push(x?`Dein Fokus für nächste Woche: ${r.lessons.length?'die obige Schwachstelle gezielt angehen.':'Konsistenz halten, keine Lücken.'}`:`Ein kleiner Fokus für nächste Woche reicht: ${r.lessons.length?'die eine Sache oben verbessern.':'einfach dranbleiben — Tag für Tag.'} Du schaffst das. 💪`.replace('💪',''));
+  return o.join(' ');
 }
 
 // ── RANK MODAL
@@ -751,7 +983,7 @@ function analyze(){
   const he=H.filter(h=>h.en>=4),le=H.filter(h=>h.en&&h.en<=2);
   if(he.length>=2&&le.length>=2){const d=avgS(he)-avgS(le);
     if(d>=1.2)ins.push({w:d*0.9,txt:`Tage mit hoher Energie liegen ${d.toFixed(1)} Punkte über Tagen mit niedriger. Frage dich: Was gibt dir morgens Energie — und was raubt sie dir?`});}
-  const dis=H.filter(h=>h.dis&&h.dis!=='— Nichts').map(h=>h.dis);
+  const dis=H.filter(h=>h.dis&&h.dis!=='Nichts').map(h=>h.dis);
   if(dis.length>=3){const cnt={};dis.forEach(d=>cnt[d]=(cnt[d]||0)+1);
     const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
     if(top[1]/dis.length>=0.4)ins.push({w:top[1]/dis.length*2,txt:`${Math.round(top[1]/dis.length*100)}% deiner Ablenkungen gehen auf ${top[0]} zurück. Eine gezielte Regel dagegen bringt mehr als jede Motivation.`});}
@@ -829,6 +1061,8 @@ function R(ks=false){
   else if(S.sc==='eve')sc.innerHTML=rEve();
   else if(S.sc==='b')sc.innerHTML=rB();
   else if(S.sc==='set')sc.innerHTML=rSet();
+  // SVG-Icons in Nav einsetzen
+  document.querySelectorAll('.ni[data-ic]').forEach(el=>{if(!el._iced){el.innerHTML=IC.i(el.dataset.ic,'currentColor',2);el._iced=1;}});
   EV();sc.scrollTop=saved;
   // Zustand nach jedem Render speichern
   if(S.sc!=='ob')saveState();
@@ -945,8 +1179,8 @@ function EV(){
       const scores=[7,4,8,3,9,6,8];
       const slqs=[4,2,4,1,5,3,5];
       const ens=[4,2,4,2,5,3,4];
-      const diss=['😴 Müdigkeit','📱 Handy','— Nichts','📱 Handy','— Nichts','⏳ Aufschieben','📱 Handy'];
-      const fails=[null,'📱 Handy',null,'😴 Zu müde',null,'🔁 Aufgeschoben',null];
+      const diss=['Müdigkeit','Handy','Nichts','Handy','Nichts','Aufschieben','Handy'];
+      const fails=[null,'Handy',null,'Zu müde',null,'Aufgeschoben',null];
       S.history=[];
       for(let i=6;i>=0;i--){
         const d=new Date(today);d.setDate(d.getDate()-i);
@@ -961,7 +1195,7 @@ function EV(){
       S.streak=7;
       S.ach.forEach(a=>{if(['s7','c31','all'].includes(a.id))a.e=true;});
       // Auch ein paar Beispiel-Gewohnheiten + Monatsziele falls leer
-      if(S.habits.length===0)S.habits=[{t:'💧 Wasser trinken',ck:true},{t:'🏃 Sport',ck:false},{t:'📵 Kein Handy bis 10h',ck:true}];
+      if(S.habits.length===0)S.habits=[{t:'Wasser trinken',ck:true},{t:'Sport',ck:false},{t:'Kein Handy bis 10h',ck:true}];
       if(!S.monthGoals.some(g=>g.g)){S.monthGoals=[{g:'Täglich Sport vor 10 Uhr',p:62},{g:'Kein Handy bis 10 Uhr',p:48},{g:'Eigenes Projekt 30 Min',p:55}];}
       S.ed=true; // markiert heutigen Abend-Check-in als erledigt für Demo
       S.sc='b'; // direkt zu Berichten springen
@@ -973,6 +1207,9 @@ function EV(){
   };
   // Rank badge
   const rb=document.getElementById('rank-badge');if(rb)rb.onclick=openRankModal;
+  // Weekly review
+  const ow=document.getElementById('open-weekly');if(ow)ow.onclick=openWeekly;
+  const ows=document.getElementById('open-weekly-sun');if(ows)ows.onclick=openWeekly;
 
   // Task template
   const ltmpl=document.getElementById('load-tmpl');
