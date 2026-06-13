@@ -1,0 +1,18 @@
+{
+  "name": "My Future Me",
+  "short_name": "MFM",
+  "description": "Dein täglicher Coach. Dein System. Dein Wachstum.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#07091A",
+  "theme_color": "#07091A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
