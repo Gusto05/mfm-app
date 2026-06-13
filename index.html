@@ -11,8 +11,22 @@
 <link rel="apple-touch-icon" href="icon.svg">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#07091A;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:20px;font-family:'Plus Jakarta Sans',sans-serif}
-#mfm{--bg:#07091A;--su:#0C0F23;--ca:#111628;--bo:#1C2345;--bh:#252E55;--ac:#6B7CFF;--go:#F5A623;--tx:#E8EDF8;--so:#8B96BA;--mu:#47516E;--gr:#2DD4A0;--pu:#B07AFF;--cy:#38C8F5;--rd:#FF6B75;--fd:'Syne',sans-serif;--fb:'Plus Jakarta Sans',sans-serif;max-width:390px;width:100%;position:relative}
+body,#mfm{font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1,'lnum' 1}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1}
+body{background:#0B0E14;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:20px;font-family:'Plus Jakarta Sans',sans-serif}
+#mfm{
+  --fd:'Syne',sans-serif;--fb:'Plus Jakarta Sans',sans-serif;
+  max-width:390px;width:100%;position:relative;
+  /* DARK (default) */
+  --bg:#0B0E14;--su:#12161F;--ca:#161B26;--bo:#232A38;--bh:#2E3645;
+  --ac:#5B8DEF;--ac2:#6BA5FF;--go:#E0A33E;--tx:#EAEEF5;--so:#9AA6BC;--mu:#5A6478;
+  --gr:#3DD68C;--pu:#9B8AFB;--cy:#4EC5E0;--rd:#F06B6B;
+}
+#mfm[data-theme="light"]{
+  --bg:#F6F8FB;--su:#FFFFFF;--ca:#FFFFFF;--bo:#E4E9F0;--bh:#D2DAE6;
+  --ac:#3A6FD8;--ac2:#3A6FD8;--go:#C8861A;--tx:#1A2230;--so:#5A6478;--mu:#9AA6BC;
+  --gr:#1FAF6B;--pu:#7A66E8;--cy:#1F9FC0;--rd:#DC4B4B;
+}
 .ph{background:var(--bg);border-radius:22px;overflow:hidden;border:1px solid rgba(255,255,255,.06);color:var(--tx);-webkit-font-smoothing:antialiased;height:700px;display:flex;flex-direction:column;position:relative}
 .sb{padding:10px 16px 8px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bo);flex-shrink:0}
 .logo{font-family:var(--fd);font-weight:800;font-size:13px;letter-spacing:3px;color:var(--ac)}
@@ -229,16 +243,74 @@ const IC={
   }
 };
 
-const QUOTES=[
-  {t:'Wir sind das, was wir wiederholt tun.',a:'Aristoteles'},
-  {t:'Es scheint immer unmöglich, bis es vollbracht ist.',a:'Nelson Mandela'},
-  {t:'Du hast Macht über deinen Geist, nicht über äußere Ereignisse.',a:'Marc Aurel'},
-  {t:'Disziplin ist die Brücke zwischen Zielen und Erfolgen.',a:'Jim Rohn'},
-  {t:'Stärke kommt nicht aus körperlicher Kraft, sondern aus unbezähmbarem Willen.',a:'Gandhi'},
-  {t:'Unmöglich ist kein Fakt. Es ist eine Meinung.',a:'Muhammad Ali'},
-  {t:'Der Mensch wächst mit seinen Aufgaben.',a:'F. Schiller'},
-  {t:'Wenn du weißt, wohin du gehst, findest du den Weg.',a:'Konfuzius'},
+const QUOTE_LIB={
+  disziplin:[
+    {t:'Disziplin ist die Brücke zwischen Zielen und Erfolgen.',a:'Jim Rohn'},
+    {t:'Wir sind das, was wir wiederholt tun. Exzellenz ist daher keine Tat, sondern eine Gewohnheit.',a:'Aristoteles'},
+    {t:'Motivation bringt dich in Gang, Gewohnheit hält dich am Laufen.',a:'Jim Ryun'},
+    {t:'Erfolg ist die Summe kleiner Anstrengungen, Tag für Tag wiederholt.',a:'Robert Collier'},
+    {t:'Du wirst nie deine Gewohnheiten ändern, wenn du nicht zuerst dein Denken änderst.',a:'James Clear'},
+  ],
+  sport:[
+    {t:'Der Körper erreicht, was der Geist glaubt.',a:'Napoleon Hill'},
+    {t:'Es kommt nicht darauf an, wie oft du hinfällst, sondern wie oft du wieder aufstehst.',a:'Vince Lombardi'},
+    {t:'Schmerz ist vorübergehend. Aufgeben ist für immer.',a:'Lance Armstrong'},
+    {t:'Härte schlägt Talent, wenn Talent nicht hart arbeitet.',a:'Tim Notke'},
+    {t:'Dein einziger Konkurrent ist die Person, die du gestern warst.',a:'unbekannt'},
+  ],
+  fokus:[
+    {t:'Die erfolgreichen Menschen sind die, die sich auf eine Sache konzentrieren.',a:'Gary Keller'},
+    {t:'Wer zwei Hasen jagt, fängt keinen.',a:'Konfuzius'},
+    {t:'Es ist nicht zu wenig Zeit, die wir haben, sondern zu viel Zeit, die wir nicht nutzen.',a:'Seneca'},
+    {t:'Konzentriere all deine Gedanken auf die Arbeit vor dir. Die Sonnenstrahlen brennen erst, wenn sie gebündelt sind.',a:'Alexander Graham Bell'},
+  ],
+  durchhalten:[
+    {t:'Es scheint immer unmöglich, bis es vollbracht ist.',a:'Nelson Mandela'},
+    {t:'Unser größter Ruhm ist nicht, niemals zu fallen, sondern jedes Mal wieder aufzustehen.',a:'Konfuzius'},
+    {t:'Erfolg ist nicht endgültig, Misserfolg ist nicht fatal: Es ist der Mut weiterzumachen, der zählt.',a:'Winston Churchill'},
+    {t:'Wenn du durch die Hölle gehst, geh weiter.',a:'Winston Churchill'},
+    {t:'Der Mensch wächst mit seinen Aufgaben.',a:'Friedrich Schiller'},
+  ],
+  mindset:[
+    {t:'Du hast Macht über deinen Geist, nicht über äußere Ereignisse. Erkenne das, und du wirst Stärke finden.',a:'Marc Aurel'},
+    {t:'Ob du denkst, du kannst es, oder du kannst es nicht — du hast in beiden Fällen recht.',a:'Henry Ford'},
+    {t:'Die Qualität deines Lebens hängt von der Qualität deiner Gedanken ab.',a:'Marc Aurel'},
+    {t:'Unmöglich ist kein Fakt, sondern eine Meinung.',a:'Muhammad Ali'},
+    {t:'Wer ein Warum zum Leben hat, erträgt fast jedes Wie.',a:'Friedrich Nietzsche'},
+  ],
+  anfang:[
+    {t:'Der beste Zeitpunkt für einen Neuanfang ist jetzt.',a:'unbekannt'},
+    {t:'Eine Reise von tausend Meilen beginnt mit einem einzigen Schritt.',a:'Laozi'},
+    {t:'Tu die Dinge, von denen du glaubst, dass du sie nicht kannst.',a:'Eleanor Roosevelt'},
+    {t:'Fang an, wo du bist. Nutze, was du hast. Tu, was du kannst.',a:'Arthur Ashe'},
+  ]
+};
+// Flache Liste für allgemeine Anzeige
+
+// Ziel-Archetypen — Hilfe für Nutzer ohne klare Vorstellung
+const ARCHETYPES=[
+  {ic:'run',t:'Fitter & gesünder',g:'Ich will fitter und gesünder werden — regelmäßig Sport, besser essen, mehr Energie im Alltag.',goals:['3× pro Woche Sport','Genug Wasser trinken täglich','Vor 23 Uhr schlafen']},
+  {ic:'target',t:'Disziplinierter',g:'Ich will disziplinierter und konsequenter werden — Dinge durchziehen, die ich mir vornehme, statt aufzuschieben.',goals:['Tagesplan jeden Morgen','Eine Sache nicht aufschieben','Abendroutine einhalten']},
+  {ic:'book',t:'Produktiver / Lernen',g:'Ich will produktiver werden und mehr lernen — fokussiert arbeiten ohne ständige Ablenkung.',goals:['Täglich 1 Deep-Focus-Session','Kein Handy in den ersten 60 Min','Wochenrückblick machen']},
+  {ic:'brain',t:'Mental stärker',g:'Ich will mental stärker und ausgeglichener werden — weniger Stress, mehr Klarheit und Selbstvertrauen.',goals:['Täglich kurz reflektieren','Eine Sache bewusst genießen','Negatives Grübeln stoppen']},
+  {ic:'sparkle',t:'Eigene Projekte',g:'Ich will an meinen eigenen Projekten/Zielen arbeiten und endlich vorankommen, statt nur zu konsumieren.',goals:['Täglich 30 Min am Projekt','Kein Doomscrolling','Wöchentlich Fortschritt prüfen']},
+  {ic:'flame',t:'Einfach dranbleiben',g:'Ich will einfach anfangen und dranbleiben — eine tägliche Routine aufbauen und nicht nach 3 Tagen aufgeben.',goals:['Jeden Tag einchecken','Eine kleine Gewohnheit halten','7-Tage-Streak erreichen']},
 ];
+
+const QUOTES=Object.values(QUOTE_LIB).flat();
+// Wähle Zitate passend zum Ziel des Nutzers
+function quotesForGoal(){
+  const g=(S.profile.goal||'').toLowerCase();
+  const buckets=[];
+  if(/sport|gym|fit|train|lauf|abnehm|muskel|gesund/.test(g))buckets.push('sport');
+  if(/diszipl|konsequent|durchzieh|gewohnheit|routine/.test(g))buckets.push('disziplin');
+  if(/fokus|konzentr|ablenk|produktiv|aufschieb|prokrast/.test(g))buckets.push('fokus');
+  if(/durch|aufgeb|schwer|kämpf|hart/.test(g))buckets.push('durchhalten');
+  if(/denk|mindset|selbstvertrauen|angst|glaub|mental/.test(g))buckets.push('mindset');
+  if(buckets.length===0)buckets.push('disziplin','mindset','anfang');
+  const pool=buckets.flatMap(b=>QUOTE_LIB[b]||[]);
+  return pool.length?pool:QUOTES;
+}
 
 const CHALLENGES=[
   'Handy liegt diese Nacht im Flur — nicht neben dem Bett.',
@@ -268,7 +340,7 @@ const EQ=['Wie war dein Tag auf einer Skala 1–10 — und warum?','Hast du dein
 const CHK='<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 5.5l2.5 2.5 4.5-4.5" stroke="#07091A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const S={
-  sc:'ob',ob:1,tut:0,isPremium:true,planType:'monthly',// monthly|annual
+  sc:'ob',ob:1,tut:0,isPremium:true,planType:'monthly',theme:'dark',// monthly|annual
   profile:{name:'',age:'',goal:''},
   mentor:'sanft',
   tasks:[],pt:'',tg:false,tl:false,
@@ -277,8 +349,8 @@ const S={
   ep:'intro',eq:0,ea:[],ec:'',ef:'',ed:false,
   monthGoals:[{g:'',p:0},{g:'',p:0},{g:'',p:0}],
   habits:[],
-  streak:0,shieldUsed:false,waveCount:0,
-  tmSecs:25*60,tmActive:false,tmTaskIdx:-1,tmInterval:null,tmSessions:0,
+  streak:0,shieldUsed:false,waveCount:0,waveToday:false,
+  tmMin:25,tmSecs:25*60,tmActive:false,tmTaskIdx:-1,tmInterval:null,tmSessions:0,
   chIdx:0,chAccepted:false,chDone:false,
   history:[],
   ach:[
@@ -309,8 +381,10 @@ function fmtTime(){const d=new Date();return`${String(d.getHours()).padStart(2,'
 
 function sysP(){
   const n=S.profile.name||'du';
-  if(S.mentor==='streng')return`Du bist ${n}s direkter High-Performance-Coach. Klare Sprache, keine Ausreden. Lob ist verdient. Auf Deutsch.`;
-  return`Du bist ${n}s persönlicher Mentor — warm, empathisch, ermutigend. Sprich ${n} bei seinem Namen an. Auf Deutsch.`;
+  const goal=S.profile.goal?`${n}s erklärtes Ziel beim Onboarding war: "${S.profile.goal}". Beziehe deine Rückmeldung IMMER konkret auf dieses Ziel — zeige ${n}, ob die Handlungen dieser Woche in Richtung dieses Ziels gehen. `:'';
+  const principle='Wichtig: Bewerte Fortschritt REALISTISCH und an etablierten Prinzipien, nicht an Perfektion. Beispiel: Wer "diszipliniert"/"fit" werden will, ist auf Kurs, wenn er KONSISTENT dranbleibt (z.B. 3× pro Woche Sport jede Woche) — nicht erst bei täglicher Perfektion. Konsistenz über Zeit schlägt kurzfristige Intensität. Anerkenne echten Fortschritt, auch wenn er klein oder unsichtbar wirkt, und ordne ihn ein. ';
+  if(S.mentor==='streng')return`Du bist ${n}s direkter High-Performance-Coach. Klare Sprache, keine Ausreden, aber fair. ${goal}${principle}Lob ist verdient, aber benenne klar was besser gehen muss. Auf Deutsch.`;
+  return`Du bist ${n}s persönlicher Mentor — warm, empathisch, ermutigend. Sprich ${n} bei seinem Namen an. ${goal}${principle}Motiviere ${n} besonders dann weiterzumachen, wenn er keinen Fortschritt sieht. Auf Deutsch.`;
 }
 
 function getLevel(){
@@ -354,7 +428,7 @@ async function ai(msgs,sys){
 
 function tl(tasks,pfx){return tasks.map((t,i)=>`<div class="ti"><div class="cb${t.ck?' ck':''}" data-i="${pfx}${i}">${t.ck?CHK:''}</div><span style="font-size:13px;color:${t.ck?'var(--mu)':'var(--tx)'};text-decoration:${t.ck?'line-through':''};line-height:1.55">${t.t}</span></div>`).join('');}
 
-function sg(items){return`<div style="display:grid;grid-template-columns:${items.map(()=>'1fr').join(' ')};gap:8px;margin-bottom:10px">${items.map(({l,v,c})=>`<div style="background:var(--su);border-radius:11px;border:1px solid var(--bo);padding:11px 8px;text-align:center"><div style="font-family:var(--fd);font-weight:800;font-size:${items.length>2?'17':'22'}px;color:${c};letter-spacing:-1px">${v}</div><div style="font-size:10px;color:var(--mu);margin-top:3px;font-weight:600">${l}</div></div>`).join('')}</div>`;}
+function sg(items){return`<div style="display:grid;grid-template-columns:${items.map(()=>'1fr').join(' ')};gap:8px;margin-bottom:10px">${items.map(({l,v,c})=>`<div style="background:var(--su);border-radius:11px;border:1px solid var(--bo);padding:11px 8px;text-align:center"><div class="num" style="font-family:var(--fd);font-weight:800;font-size:${items.length>2?'17':'22'}px;color:${c};letter-spacing:-1px">${v}</div><div style="font-size:10px;color:var(--mu);margin-top:3px;font-weight:600">${l}</div></div>`).join('')}</div>`;}
 
 function bc(sc,lb){const h=50;return`<div style="display:flex;gap:5px;align-items:flex-end;height:${h}px">${sc.map((s,i)=>{const bh=s===0?4:Math.round((s/10)*h);const col=s>=9?'var(--gr)':s>=7?'var(--ac)':s>=5?'var(--pu)':'var(--bh)';return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:${h}px;justify-content:flex-end"><div style="width:100%;border-radius:3px;background:${col};height:${bh}px"></div><span style="font-size:9px;color:var(--mu)">${lb[i]}</span></div>`;}).join('')}</div>`;}
 
@@ -364,7 +438,7 @@ function kb(){return '';}
 function rD(){
   const n=S.profile.name||'du';
   const dn=S.tasks.filter(t=>t.ck).length,to=S.tasks.length,pt=to>0?Math.round((dn/to)*100):0;
-  const q=QUOTES[S.qidx%QUOTES.length];
+  const _qp=quotesForGoal();const q=_qp[S.qidx%_qp.length];
   const ch=CHALLENGES[S.chIdx%CHALLENGES.length];
   const MOODS=[['Müde'],['Ok'],['Gut'],['Super'],['Top']];
   const earned=S.ach.filter(a=>a.e);
@@ -390,7 +464,7 @@ ${S.partner?`<div class="ca cl"><div class="lb" style="color:var(--cy)">👥 ACC
 // ── PLAN / TIMER
 function rT(){
   const n=S.profile.name;
-  const total=25*60,rem=S.tmSecs,r2=52,circ=2*Math.PI*r2,off=circ*(1-(total-rem)/total);
+  const total=S.tmMin*60,rem=S.tmSecs,r2=52,circ=2*Math.PI*r2,off=circ*(1-(total-rem)/total);
   const mm=String(Math.floor(rem/60)).padStart(2,'0'),ss=String(rem%60).padStart(2,'0');
   const topts=S.tasks.map((t,i)=>`<option value="${i}"${S.tmTaskIdx===i?' selected':''}>${t.t}</option>`).join('');
   const hasTmpl=S.taskTemplate.length>0;
@@ -406,7 +480,7 @@ function rT(){
 </div>
 ${S.tg&&S.tasks.length>0?`<div class="ca gl" style="margin-top:0;margin-bottom:10px"><div class="lb" style="color:var(--gr)">DEIN PLAN FÜR HEUTE</div>${tl(S.tasks,'tp')}</div>`:''}
 ${hasTmpl&&S.tasks.length===0?`<div style="background:var(--su);border:1px solid var(--bo);border-radius:12px;padding:11px 13px;margin-bottom:10px"><div class="lb" style="margin-bottom:6px">GESPEICHERTE VORLAGE</div>${S.taskTemplate.map(t=>`<div style="font-size:12px;color:var(--so);padding:3px 0;display:flex;align-items:center;gap:7px"><span style="color:var(--mu)">·</span>${t}</div>`).join('')}</div>`:''}
-<div class="tw"><div class="lb" style="color:var(--cy);text-align:left;margin-bottom:10px">⏱ DEEP FOCUS TIMER</div><div style="display:flex;align-items:center;gap:14px"><div style="position:relative;width:110px;height:110px;flex-shrink:0"><svg width="110" height="110" viewBox="0 0 120 120"><circle cx="60" cy="60" r="${r2}" fill="none" stroke="var(--bo)" stroke-width="7"/><circle id="ta" class="tr" cx="60" cy="60" r="${r2}" fill="none" stroke="${S.tmActive?'var(--cy)':'var(--ac)'}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div class="tclock" style="font-family:var(--fd);font-weight:800;font-size:20px;letter-spacing:-1px;color:${S.tmActive?'var(--cy)':'var(--tx)'}">${mm}:${ss}</div><div style="font-size:9px;color:var(--mu);font-weight:600;margin-top:2px">${S.tmSessions>0?S.tmSessions+'× heute':'25 MIN'}</div></div></div><div style="flex:1"><p style="font-size:12px;color:var(--so);line-height:1.55;margin-bottom:10px">${S.tmActive?'Fokus läuft. Ablenkungen aus.':'25 Min. Eine Aufgabe. Kein Handy.'}</p>${S.tasks.length>0&&!S.tmActive?`<select class="tsel" id="tsel"><option value="-1">— Aufgabe wählen —</option>${topts}</select>`:''}${!S.tmActive?`<button class="tb ts" id="tgo">▶ Start</button>`:`<button class="tb tp" id="tstop">⏹ Stopp</button>`}</div></div></div>`;
+<div class="tw"><div class="lb" style="color:var(--cy);text-align:left;margin-bottom:10px">DEEP FOCUS TIMER</div><div style="display:flex;align-items:center;gap:14px"><div style="position:relative;width:110px;height:110px;flex-shrink:0"><svg width="110" height="110" viewBox="0 0 120 120"><circle cx="60" cy="60" r="${r2}" fill="none" stroke="var(--bo)" stroke-width="7"/><circle id="ta" class="tr" cx="60" cy="60" r="${r2}" fill="none" stroke="${S.tmActive?'var(--cy)':'var(--ac)'}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><div class="tclock" style="font-family:var(--fd);font-weight:800;font-size:20px;letter-spacing:-1px;color:${S.tmActive?'var(--cy)':'var(--tx)'}">${mm}:${ss}</div><div style="font-size:9px;color:var(--mu);font-weight:600;margin-top:2px">${S.tmSessions>0?S.tmSessions+'× heute':S.tmMin+' MIN'}</div></div></div><div style="flex:1"><p style="font-size:12px;color:var(--so);line-height:1.55;margin-bottom:10px">${S.tmActive?'Fokus läuft. Ablenkungen aus.':'Eine Aufgabe. Kein Handy.'}</p>${!S.tmActive?`<div style="display:flex;gap:4px;margin-bottom:8px">${[15,25,45,60].map(m=>`<button class="dur-btn" data-dur="${m}" style="flex:1;padding:6px 2px;border-radius:8px;border:1px solid ${S.tmMin===m?'var(--cy)':'var(--bo)'};background:${S.tmMin===m?'rgba(78,197,224,.12)':'var(--su)'};color:${S.tmMin===m?'var(--cy)':'var(--mu)'};font-family:var(--fb);font-size:11px;font-weight:600;cursor:pointer">${m}m</button>`).join('')}</div>`:''}${S.tasks.length>0&&!S.tmActive?`<select class="tsel" id="tsel"><option value="-1">— Aufgabe wählen —</option>${topts}</select>`:''}${!S.tmActive?`<button class="tb ts" id="tgo">▶ Start</button>`:`<button class="tb tp" id="tstop">⏹ Stopp</button>`}</div></div></div>`;
 }
 
 // ── MIDDAY
@@ -500,7 +574,7 @@ ${S.profile.goal?`<p style="font-size:12px;color:var(--so);line-height:1.5;margi
       <circle cx="37" cy="37" r="32" fill="none" stroke="var(--bo)" stroke-width="6"/>
       <circle cx="37" cy="37" r="32" fill="none" stroke="var(--pu)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(2*Math.PI*32).toFixed(1)}" stroke-dashoffset="${(2*Math.PI*32*(1-gp.pct/100)).toFixed(1)}"/>
     </svg>
-    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:18px;color:var(--pu)">${gp.pct}%</div>
+    <div class="num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-weight:800;font-size:18px;color:var(--pu)">${gp.pct}%</div>
   </div>
   <div style="flex:1"><div style="font-family:var(--fd);font-weight:700;font-size:15px;color:var(--tx);margin-bottom:3px">${gp.label}</div><div style="font-size:12px;color:var(--mu);line-height:1.5">${gp.detail}</div></div>
 </div></div>
@@ -508,7 +582,7 @@ ${S.profile.goal?`<p style="font-size:12px;color:var(--so);line-height:1.5;margi
 ${sg([{l:'Ø Score',v:avg,c:'var(--ac)'},{l:'Einträge',v:S.history.length,c:'var(--pu)'},{l:'Streak',v:S.streak,c:'var(--go)'}])}
 
 <!-- LINIENDIAGRAMM -->
-<div class="ca"><div class="lb">SCORE-ENTWICKLUNG ${last14.length>7?'(14 TAGE)':'(LETZTE TAGE)'}</div>${lineChart(last14.map(h=>h.s),330,90)}<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:2px"><span>${last14[0].date.slice(0,5)}</span><span>heute</span></div></div>
+<div class="ca"><div class="lb">SCORE-ENTWICKLUNG ${last14.length>7?'(14 TAGE)':'(LETZTE TAGE)'}</div>${lineChart(last14.map(h=>h.s),330,90)}<div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--mu);margin-top:3px;padding:0 4px">${(()=>{const wd=['So','Mo','Di','Mi','Do','Fr','Sa'];const step=Math.ceil(last14.length/5);return last14.map((h,i)=>{const show=i===0||i===last14.length-1||i%step===0;const lbl=h.wd!==undefined?wd[h.wd]:h.date.slice(0,2);return show?`<span class="num">${i===last14.length-1?'Heute':lbl}</span>`:'<span></span>';}).join('');})()}</div></div>
 
 <!-- WOCHEN-RÜCKBLICK BUTTON -->
 <button class="bt btp" id="open-weekly" style="display:flex;align-items:center;justify-content:center;gap:8px"><span style="width:18px;height:18px;display:inline-flex">${IC.i('sparkle','#fff',2)}</span>Wochen-Rückblick & Tipps</button>
@@ -560,9 +634,17 @@ ${S.monthGoals.map((g,i)=>`<div style="margin-bottom:10px"><div style="font-size
 ${S.habits.map((h,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bo)"><span style="font-size:13px">${h.t}</span><button style="background:rgba(255,107,117,.1);border:1px solid rgba(255,107,117,.2);border-radius:7px;color:var(--rd);font-size:11px;padding:3px 8px;cursor:pointer;font-family:var(--fb)" data-rmh="${i}">×</button></div>`).join('')}
 <div style="margin-top:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHNELL HINZUFÜGEN</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${HSUGG.filter(s=>!S.habits.find(h=>h.t===s)).slice(0,4).map(s=>`<button class="rtb" data-ah="${s}">${s}</button>`).join('')}</div><div style="display:flex;gap:8px"><input class="inp" id="habi" placeholder="Eigene Gewohnheit..." style="margin:0;flex:1"><button class="bt btp" id="habadd" style="width:auto;padding:9px 14px;margin:0;font-size:12px">+</button></div></div></div>
 <!-- PUSH NOTIFICATIONS -->
-<div class="ca cl"><div class="lb" style="color:var(--cy)">🔔 PUSH NOTIFICATIONS</div>
-<p style="font-size:12px;color:var(--mu);line-height:1.55;margin-bottom:12px">Wähle wann du erinnert werden möchtest. Letzteres ist der stärkste Retention-Hebel.</p>
-${[{ic:'☀️',l:'Morgen-Impuls',sub:'Tagesplan starten',k:'morning'},{ic:'🌤️',l:'Halbzeit-Reminder',sub:'Mittag Check-in',k:'noon'},{ic:'🌙',l:'Streak-Alert',sub:'Wenn Abend-Check-in fehlt',k:'evening'}].map(({ic,l,sub,k})=>`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bo)"><span style="font-size:20px">${ic}</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--tx)">${l}</div><div style="font-size:11px;color:var(--mu);margin-top:1px">${sub}</div></div><input type="time" class="ntime notif-time" data-nkt="${k}" value="${S.notifs[k].time}" style="opacity:${S.notifs[k].on?1:.35}"><button class="notif-toggle" data-nk="${k}" style="width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;background:${S.notifs[k].on?'var(--ac)':'var(--bh)'};position:relative;transition:background .2s;flex-shrink:0;margin-left:4px"><div style="position:absolute;top:3px;${S.notifs[k].on?'right:3px':'left:3px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:all .2s"></div></button></div>`).join('')}
+<div class="ca cl"><div class="lb" style="color:var(--cy)">BENACHRICHTIGUNGEN</div>
+<p style="font-size:12px;color:var(--mu);line-height:1.55;margin-bottom:12px">Wähle wann du erinnert werden möchtest. Der Abend-Reminder ist der stärkste Hebel gegen Streak-Verlust.</p>
+${[{ic:'sun',l:'Morgen-Impuls',sub:'Tagesplan starten',k:'morning'},{ic:'clock',l:'Halbzeit-Reminder',sub:'Mittag Check-in',k:'noon'},{ic:'moon',l:'Streak-Alert',sub:'Wenn Abend-Check-in fehlt',k:'evening'}].map(({ic,l,sub,k})=>`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bo)"><span style="width:20px;height:20px;display:inline-flex;color:var(--cy)">${IC.i(ic,'currentColor',1.8)}</span><div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--tx)">${l}</div><div style="font-size:11px;color:var(--mu);margin-top:1px">${sub}</div></div><input type="time" class="ntime notif-time" data-nkt="${k}" value="${S.notifs[k].time}" style="opacity:${S.notifs[k].on?1:.35}"><button class="notif-toggle" data-nk="${k}" style="width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;background:${S.notifs[k].on?'var(--ac)':'var(--bh)'};position:relative;transition:background .2s;flex-shrink:0;margin-left:4px"><div style="position:absolute;top:3px;${S.notifs[k].on?'right:3px':'left:3px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:all .2s"></div></button></div>`).join('')}
+<button id="notif-test" class="bt btc" style="margin-top:12px;margin-bottom:8px">Test-Benachrichtigung senden</button>
+<div id="notif-status" style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:8px"></div>
+<details><summary style="font-size:11px;color:var(--cy);cursor:pointer;padding:6px 0;font-family:var(--fb);font-weight:600">Benachrichtigungen funktionieren nicht?</summary>
+<div style="font-size:11px;color:var(--so);line-height:1.65;padding:8px 0">
+<strong style="color:var(--tx)">iPhone:</strong> Die App muss zum Home-Bildschirm hinzugefügt sein (Safari → Teilen → "Zum Home-Bildschirm"). Erst dann sind Benachrichtigungen möglich (ab iOS 16.4). Öffne die App vom Home-Icon, nicht aus Safari.<br><br>
+<strong style="color:var(--tx)">Android:</strong> Beim ersten Aktivieren erscheint eine Erlaubnis-Abfrage — auf "Zulassen" tippen. Falls verpasst: Chrome-Einstellungen → Website-Einstellungen → Benachrichtigungen.<br><br>
+<strong style="color:var(--tx)">Wichtig für alle:</strong> Da dies eine Web-App ist, kommen Benachrichtigungen zuverlässig nur, solange die App im Hintergrund geöffnet ist. Für echte Erinnerungen bei komplett geschlossener App ist später ein Server nötig — das ist ein bekannter nächster Entwicklungsschritt.
+</div></details>
 </div>
 <!-- ACCOUNTABILITY PARTNER -->
 <div class="ca" style="border-color:rgba(56,200,245,.2)"><div class="lb" style="color:var(--cy)">👥 ACCOUNTABILITY PARTNER</div>
@@ -652,7 +734,7 @@ async function openWeekly(){
   body.innerHTML=`
     <!-- Score + Trend -->
     <div class="ca" style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:14px">
-      <div style="text-align:center"><div style="font-family:var(--fd);font-weight:800;font-size:34px;color:var(--ac);line-height:1">${r.avg.toFixed(1)}</div><div style="font-size:10px;color:var(--mu)">Ø Score</div></div>
+      <div style="text-align:center"><div class="num" style="font-family:var(--fd);font-weight:800;font-size:34px;color:var(--ac);line-height:1">${r.avg.toFixed(1)}</div><div style="font-size:10px;color:var(--mu)">Ø Score</div></div>
       <div style="flex:1"><div style="font-size:13px;font-weight:600;color:${trendCol};margin-bottom:6px">${trendTxt}</div>${lineChart(r.w.map(h=>h.s),200,46)}</div>
     </div></div>
     <!-- Coach Text -->
@@ -685,8 +767,12 @@ function localWeeklyText(r,n){
   }else{
     o.push(x?'Nächste Woche: gleiche Disziplin, ein Stück konsequenter.':`Nimm den Schwung mit in die neue Woche, ${n} — du hast bewiesen, dass du es kannst.`);
   }
-  // 4) konkreter Fokus
-  o.push(x?`Dein Fokus für nächste Woche: ${r.lessons.length?'die obige Schwachstelle gezielt angehen.':'Konsistenz halten, keine Lücken.'}`:`Ein kleiner Fokus für nächste Woche reicht: ${r.lessons.length?'die eine Sache oben verbessern.':'einfach dranbleiben — Tag für Tag.'} Du schaffst das. 💪`.replace('💪',''));
+  // 4) Ziel-Bezug + Konsistenz-Prinzip (Omas Punkt + realistische Erwartung)
+  if(S.profile.goal){
+    o.push(x?`Denk an dein Ziel: "${S.profile.goal}". Entscheidend ist nicht die perfekte Woche, sondern dass du Woche für Woche dranbleibst — Konsistenz bringt dich dahin, nicht Perfektion.`:`Dein Ziel — "${S.profile.goal}" — erreichst du nicht durch perfekte Tage, sondern dadurch, dass du immer wieder zurückkommst. Genau das tust du gerade. Das ist echter Fortschritt, auch wenn er sich noch nicht groß anfühlt.`);
+  }
+  // 5) konkreter Fokus
+  o.push(x?`Dein Fokus für nächste Woche: ${r.lessons.length?'die obige Schwachstelle gezielt angehen.':'Konsistenz halten, keine Lücken.'}`:`Ein kleiner Fokus für nächste Woche reicht: ${r.lessons.length?'die eine Sache oben verbessern.':'einfach dranbleiben — Tag für Tag.'} Du schaffst das.`);
   return o.join(' ');
 }
 
@@ -926,15 +1012,18 @@ function showTut(){
 // ── WAVE ANIMATION
 function doWave(){
   const btn=document.getElementById('wbtn');if(!btn)return;
-  S.waveCount++;
-  if(S.waveCount>=10){const a=S.ach.find(a=>a.id==='w10');if(a)a.e=true;}
+  // Animation immer (man darf spammen)
   btn.classList.remove('w');void btn.offsetWidth;btn.classList.add('w');
   const rc=btn.getBoundingClientRect();
-  const emojis=['👋','🙌','💫','✨','🔥','⚡','💪'];
-  const el=document.createElement('div');
-  el.className='wf';el.textContent=emojis[S.waveCount%emojis.length];
-  el.style.left=(rc.left-4)+'px';el.style.top=(rc.top-8)+'px';
-  document.body.appendChild(el);setTimeout(()=>el.remove(),950);
+  const el=document.createElement('div');el.className='wf';
+  el.innerHTML=IC.i('wave','#5B8DEF',2);el.style.cssText+=`left:${rc.left-4}px;top:${rc.top-8}px;width:24px;height:24px`;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),900);
+  // Zählt aber nur 1x pro Tag
+  if(!S.waveToday){
+    S.waveToday=true;S.waveCount++;
+    if(S.waveCount>=10){const a=S.ach.find(a=>a.id==='w10');if(a)a.e=true;}
+    saveState();
+  }
 }
 
 // ── CONFETTI
@@ -955,17 +1044,43 @@ function confetti(){
 function rOb(){
   const s=S.ob;
   const dots=`<div style="display:flex;justify-content:center;gap:7px;margin-bottom:18px">${[1,2,3,4].map(i=>`<div class="dot${s===i?' on':''}"></div>`).join('')}</div>`;
-  if(s===1)return`<div class="ob"><div></div><div style="text-align:center;padding:0 10px"><div style="font-size:72px;margin-bottom:20px">🚀</div><div style="font-family:var(--fd);font-weight:800;font-size:32px;letter-spacing:-.5px;line-height:1.2;margin-bottom:12px">My Future Me</div><p style="color:var(--so);font-size:14px;line-height:1.75;max-width:230px;margin:0 auto">Dein täglicher Coach.<br>Dein System. Dein Wachstum.</p></div><div>${dots}<button class="bt btp" id="obn">Starten →</button><p style="text-align:center;font-size:11px;color:var(--mu);margin-top:4px">Kostenlos · Premium verfügbar</p></div></div>`;
-  if(s===2)return`<div class="ob"><div><div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 1 VON 3</div><div class="h2" style="margin-bottom:6px">Wer bist du?</div></div><div style="margin-bottom:8px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">DEIN NAME *</div><input class="inp" id="oname" placeholder="z.B. Max" value="${S.profile.name}"></div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">ALTER</div><input class="inp" id="oage" type="number" placeholder="21" value="${S.profile.age}" style="max-width:100px"></div><div><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">DEIN GROSSES ZIEL *</div><textarea class="ta" id="ogoal" style="min-height:90px" placeholder="Was willst du in den nächsten 3 Monaten wirklich verändern?">${S.profile.goal}</textarea></div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
-  if(s===3)return`<div class="ob"><div><div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 2 VON 3</div><div class="h2" style="margin-bottom:6px">Wie soll ich mit dir reden?</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Du kannst das später jederzeit ändern.</p></div><div class="mt"><button class="mtb${S.mentor==='streng'?' on':''}" id="om-s"><div style="font-size:26px;margin-bottom:8px">⚡</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='streng'?'var(--ac)':'var(--tx)'}">Coach</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Direkt<br>Fordernd<br>Kein Blabla</div></button><button class="mtb${S.mentor==='sanft'?' on':''}" id="om-m"><div style="font-size:26px;margin-bottom:8px">🤝</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='sanft'?'var(--ac)':'var(--tx)'}">Mentor</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Warm<br>Ermutigend<br>Verständnisvoll</div></button></div><div style="background:var(--su);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--so);line-height:1.6;font-style:italic">${S.mentor==='streng'?`"${S.profile.name||'Hey'}, keine Ausreden. Dein System läuft. Führe es aus."`:'"Hey '+( S.profile.name||'du')+', ich sehe wie viel du dir vornimmst — das zeigt, wie ernst es dir ist. Was ist heute wirklich möglich?"'}</div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
-  if(s===4)return`<div class="ob"><div><div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 3</div><div class="h2" style="margin-bottom:6px">Deine 3 Monatsziele.</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Konkret und messbar. Du kannst sie später anpassen.</p></div>${[0,1,2].map(i=>`<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">ZIEL ${i+1}</div><input class="inp" id="og${i}" placeholder="${['z.B. Täglich Sport vor 10 Uhr','z.B. Kein Handy bis 10 Uhr morgens','z.B. Eigenes Projekt 30 Min täglich'][i]}" value="${S.monthGoals[i].g}"></div>`).join('')}</div><div>${dots}<button class="bt btg" id="obdone">Los geht's! 🚀</button></div></div>`;
+  if(s===1)return`<div class="ob"><div></div><div style="text-align:center;padding:0 10px"><div style="width:72px;height:72px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;border-radius:22px;background:linear-gradient(135deg,var(--ac),var(--pu))"><span style="width:38px;height:38px;display:inline-flex;color:#fff">${IC.i('sparkle','#fff',1.8)}</span></div><div style="font-family:var(--fd);font-weight:800;font-size:32px;letter-spacing:-.5px;line-height:1.2;margin-bottom:12px">My Future Me</div><p style="color:var(--so);font-size:14px;line-height:1.75;max-width:230px;margin:0 auto">Dein täglicher Coach.<br>Dein System. Dein Wachstum.</p></div><div>${dots}<button class="bt btp" id="obn">Starten →</button><p style="text-align:center;font-size:11px;color:var(--mu);margin-top:4px">Kostenlos · Premium verfügbar</p></div></div>`;
+  if(s===2)return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 1 VON 3</div><div class="h2" style="margin-bottom:6px">Wer bist du?</div></div><div style="margin-bottom:8px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">DEIN NAME *</div><input class="inp" id="oname" placeholder="z.B. Max" value="${S.profile.name}"></div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">ALTER</div><input class="inp" id="oage" type="number" placeholder="21" value="${S.profile.age}" style="max-width:100px"></div><div><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">WIE WILLST DU WERDEN? *</div><textarea class="ta" id="ogoal" style="min-height:78px" placeholder="Beschreibe die Person, die du werden willst...">${S.profile.goal}</textarea></div>
+<div style="margin-top:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:7px;font-weight:600">NOCH UNSICHER? WÄHLE EINEN STARTPUNKT:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${ARCHETYPES.map((a,i)=>`<button class="arch-btn" data-arch="${i}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:11px;border:1px solid var(--bo);background:var(--su);color:var(--so);font-size:12px;font-family:var(--fb);cursor:pointer"><span style="width:15px;height:15px;display:inline-flex;color:var(--ac)">${IC.i(a.ic,'currentColor',1.8)}</span>${a.t}</button>`).join('')}</div><p style="font-size:10px;color:var(--mu);margin-top:8px;line-height:1.5">Tipp: Wähle einen Bereich — wir füllen Ziel & Vorschläge aus. Du kannst alles danach anpassen.</p></div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
+  if(s===3)return`<div class="ob"><div><div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 2 VON 3</div><div class="h2" style="margin-bottom:6px">Wie soll ich mit dir reden?</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Du kannst das später jederzeit ändern.</p></div><div class="mt"><button class="mtb${S.mentor==='streng'?' on':''}" id="om-s"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--go)">${IC.i('lightning','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='streng'?'var(--ac)':'var(--tx)'}">Coach</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Direkt<br>Fordernd<br>Kein Blabla</div></button><button class="mtb${S.mentor==='sanft'?' on':''}" id="om-m"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--ac)">${IC.i('wave','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='sanft'?'var(--ac)':'var(--tx)'}">Mentor</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Warm<br>Ermutigend<br>Verständnisvoll</div></button></div><div style="background:var(--su);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--so);line-height:1.6;font-style:italic">${S.mentor==='streng'?`"${S.profile.name||'Hey'}, keine Ausreden. Dein System läuft. Führe es aus."`:'"Hey '+( S.profile.name||'du')+', ich sehe wie viel du dir vornimmst — das zeigt, wie ernst es dir ist. Was ist heute wirklich möglich?"'}</div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
+  if(s===4){const gs=S.monthGoals.length?S.monthGoals:[{g:'',p:0}];return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 3</div><div class="h2" style="margin-bottom:6px">Deine Monatsziele.</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Konkret und messbar. Füge so viele hinzu wie du willst.</p></div>${gs.map((g,i)=>`<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center"><input class="inp ob-goal" data-gi="${i}" style="margin:0;flex:1" placeholder="z.B. 3× pro Woche Sport" value="${g.g}">${gs.length>1?`<button class="og-rm" data-gi="${i}" style="width:34px;height:38px;border-radius:9px;border:1px solid rgba(240,107,107,.2);background:rgba(240,107,107,.08);color:var(--rd);cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center">${IC.i('x','currentColor',2)}</button>`:''}</div>`).join('')}<button id="og-add" style="width:100%;padding:9px;border-radius:10px;border:1px dashed var(--bo);background:none;color:var(--ac);font-family:var(--fb);font-size:12px;font-weight:600;cursor:pointer;margin-top:2px">+ Weiteres Ziel</button></div><div>${dots}<button class="bt btg" id="obdone">Los geht's!</button></div></div>`;}
 }
 
 // ── LOKALE ENGINES (0 € API-Kosten) ─────────────────────
 function localPlanFromText(t){
-  const parts=t.split(/\n|[.;•]| und dann | und |, dann /i).map(s=>s.trim()).filter(s=>s.length>3);
-  const tasks=parts.slice(0,5).map(s=>s.charAt(0).toUpperCase()+s.slice(1,60));
-  return tasks.length?tasks:[t.slice(0,60)];
+  if(!t||!t.trim())return[];
+  // Satzzeichen + Konjunktionen als Trenner
+  let raw=t.replace(/\bund danach\b|\bdanach\b|\bund dann\b|\bdann\b|\bund anschließend\b|\banschließend\b|\bdaraufhin\b/gi,'|')
+           .replace(/\bund\b/gi,'|')
+           .split(/[|\n.;•·,]+/);
+  const stop=/^(ich|heute|möchte|will|werde|muss|sollte|mir|mich|noch|auch|dann|erst|zuerst|nehme|vor|mein|meine|am|im|um|den|die|das|ein|eine|zu|ins|in|nach|vor|bis)$/i;
+  const tasks=[];
+  raw.forEach(seg=>{
+    seg=seg.trim();if(seg.length<2)return;
+    // Entferne Einleitungs-Floskeln
+    seg=seg.replace(/^(ich (möchte|will|werde|muss|sollte)|heute( möchte ich| will ich| nehme ich mir vor:?)?|als erstes|zuerst|erst(mal)?|dann|danach|außerdem|zudem|auch noch|noch|und)\s+/i,'');
+    seg=seg.replace(/\s+/g,' ').trim();
+    if(!seg||stop.test(seg))return;
+    // Verb am Satzanfang → Infinitiv-Stichpunkt
+    // "ins gym gehen" bleibt; "gehe ins gym" → "Ins Gym gehen"
+    // "lerne ich X" / "gehe ich X" → entferne Pronomen, Verb in Infinitiv
+    seg=seg.replace(/^(gehe|geh)\s+ich\s+/i,'').replace(/^(lerne|lern)\s+ich\s+/i,'Lernen: ').replace(/^(mache|mach)\s+ich\s+/i,'').replace(/^\w+\s+ich\s+/i,'');
+    seg=seg.replace(/^gehe\b/i,'gehen').replace(/^mache\b/i,'machen').replace(/^lerne\b/i,'lernen');
+    // Großschreibung erstes Wort
+    seg=seg.charAt(0).toUpperCase()+seg.slice(1);
+    // Kürzen
+    if(seg.length>50)seg=seg.slice(0,50).trim();
+    tasks.push(seg);
+  });
+  // Dedupe
+  const seen=new Set();const out=[];
+  tasks.forEach(t=>{const key=t.toLowerCase();if(!seen.has(key)){seen.add(key);out.push(t);}});
+  return out.slice(0,6);
 }
 function avgS(a){return a.reduce((x,h)=>x+h.s,0)/a.length;}
 function analyze(){
@@ -1061,6 +1176,9 @@ function R(ks=false){
   else if(S.sc==='eve')sc.innerHTML=rEve();
   else if(S.sc==='b')sc.innerHTML=rB();
   else if(S.sc==='set')sc.innerHTML=rSet();
+  // Theme anwenden
+  document.getElementById('mfm').setAttribute('data-theme',S.theme);
+  const tb=document.getElementById('theme-btn');if(tb)tb.innerHTML=IC.i(S.theme==='dark'?'sun':'moon','currentColor',1.8);
   // SVG-Icons in Nav einsetzen
   document.querySelectorAll('.ni[data-ic]').forEach(el=>{if(!el._iced){el.innerHTML=IC.i(el.dataset.ic,'currentColor',2);el._iced=1;}});
   EV();sc.scrollTop=saved;
@@ -1074,6 +1192,8 @@ function EV(){
 
   // Upgrade
   const ub=document.getElementById('upg-btn');if(ub)ub.onclick=openUpgrade;
+  // Theme toggle
+  const thb=document.getElementById('theme-btn');if(thb)thb.onclick=()=>{S.theme=S.theme==='dark'?'light':'dark';R(true);};
 
   // Wave 👋
   const wb=document.getElementById('wbtn');if(wb)wb.onclick=doWave;
@@ -1110,8 +1230,9 @@ function EV(){
 
   // Timer
   const tsel=document.getElementById('tsel');if(tsel)tsel.onchange=e=>{S.tmTaskIdx=parseInt(e.target.value);};
+  document.querySelectorAll('[data-dur]').forEach(b=>{b.onclick=()=>{S.tmMin=parseInt(b.dataset.dur);S.tmSecs=S.tmMin*60;R(true);};});
   const tgo=document.getElementById('tgo');
-  if(tgo)tgo.onclick=()=>{if(S.tmActive)return;S.tmSecs=25*60;S.tmActive=true;R(true);S.tmInterval=setInterval(()=>{if(!S.tmActive){clearInterval(S.tmInterval);return;}S.tmSecs--;const arc=document.getElementById('ta');const total=25*60,r2=52,circ=2*Math.PI*r2;if(arc)arc.style.strokeDashoffset=circ*(1-(total-S.tmSecs)/total);const mm2=String(Math.floor(S.tmSecs/60)).padStart(2,'0'),ss2=String(S.tmSecs%60).padStart(2,'0');const clk=document.querySelector('.tclock');if(clk)clk.textContent=mm2+':'+ss2;if(S.tmSecs<=0){clearInterval(S.tmInterval);S.tmActive=false;S.tmSessions++;if(S.tmSessions>=5){const a=S.ach.find(a=>a.id==='f5');if(a)a.e=true;}confetti();R(true);}},1000);};
+  if(tgo)tgo.onclick=()=>{if(S.tmActive)return;S.tmSecs=S.tmMin*60;S.tmActive=true;R(true);S.tmInterval=setInterval(()=>{if(!S.tmActive){clearInterval(S.tmInterval);return;}S.tmSecs--;const arc=document.getElementById('ta');const total=S.tmMin*60,r2=52,circ=2*Math.PI*r2;if(arc)arc.style.strokeDashoffset=circ*(1-(total-S.tmSecs)/total);const mm2=String(Math.floor(S.tmSecs/60)).padStart(2,'0'),ss2=String(S.tmSecs%60).padStart(2,'0');const clk=document.querySelector('.tclock');if(clk)clk.textContent=mm2+':'+ss2;if(S.tmSecs<=0){clearInterval(S.tmInterval);S.tmActive=false;S.tmSessions++;if(S.tmSessions>=5){const a=S.ach.find(a=>a.id==='f5');if(a)a.e=true;}confetti();R(true);}},1000);};
   const tst=document.getElementById('tstop');if(tst)tst.onclick=()=>{clearInterval(S.tmInterval);S.tmActive=false;R(true);};
 
   // Onboarding
@@ -1120,10 +1241,37 @@ function EV(){
     if(S.ob===2){const nm=document.getElementById('oname')?.value.trim();if(!nm){document.getElementById('oname').focus();return;}S.profile.name=nm;S.profile.age=document.getElementById('oage')?.value||'';S.profile.goal=document.getElementById('ogoal')?.value.trim()||'';}
     S.ob++;R();
   };
+  // Archetyp wählen → füllt Ziel + Monatsziele vor
+  document.querySelectorAll('[data-arch]').forEach(b=>{b.onclick=()=>{
+    const a=ARCHETYPES[parseInt(b.dataset.arch)];
+    S.profile.goal=a.g;
+    S.monthGoals=a.goals.map(g=>({g,p:0}));
+    // Name/Alter erhalten
+    const nm=document.getElementById('oname')?.value.trim();if(nm)S.profile.name=nm;
+    const ag=document.getElementById('oage')?.value;if(ag)S.profile.age=ag;
+    R();
+  };});
   const oms=document.getElementById('om-s');if(oms)oms.onclick=()=>{S.mentor='streng';R();};
   const omm=document.getElementById('om-m');if(omm)omm.onclick=()=>{S.mentor='sanft';R();};
+  // Dynamische Ziel-Inputs (live speichern)
+  document.querySelectorAll('.ob-goal').forEach(inp=>{inp.oninput=e=>{const i=parseInt(inp.dataset.gi);if(S.monthGoals[i])S.monthGoals[i].g=e.target.value;};});
+  const oadd=document.getElementById('og-add');
+  if(oadd)oadd.onclick=()=>{
+    // aktuelle Werte sichern
+    document.querySelectorAll('.ob-goal').forEach(inp=>{const i=parseInt(inp.dataset.gi);if(S.monthGoals[i])S.monthGoals[i].g=inp.value;});
+    S.monthGoals.push({g:'',p:0});R();
+  };
+  document.querySelectorAll('.og-rm').forEach(b=>{b.onclick=()=>{
+    document.querySelectorAll('.ob-goal').forEach(inp=>{const i=parseInt(inp.dataset.gi);if(S.monthGoals[i])S.monthGoals[i].g=inp.value;});
+    S.monthGoals.splice(parseInt(b.dataset.gi),1);R();
+  };});
   const obd=document.getElementById('obdone');
-  if(obd)obd.onclick=()=>{[0,1,2].forEach(i=>{const v=document.getElementById('og'+i)?.value.trim();if(v)S.monthGoals[i].g=v;});S.sc='d';S.tut=1;R();setTimeout(showTut,250);};
+  if(obd)obd.onclick=()=>{
+    document.querySelectorAll('.ob-goal').forEach(inp=>{const i=parseInt(inp.dataset.gi);if(S.monthGoals[i])S.monthGoals[i].g=inp.value.trim();});
+    S.monthGoals=S.monthGoals.filter(g=>g.g);
+    if(S.monthGoals.length===0)S.monthGoals=[{g:'',p:0}];
+    S.sc='d';S.tut=1;R();setTimeout(showTut,250);
+  };
 
   // Midday
   const bkm=document.getElementById('bkmid');if(bkm)bkm.onclick=()=>{S.sc='d';R();};
@@ -1222,6 +1370,20 @@ function EV(){
 
   // Notification toggles
   document.querySelectorAll('.notif-toggle').forEach(b=>{b.onclick=()=>{const k=b.dataset.nk;S.notifs[k].on=!S.notifs[k].on;if(S.notifs[k].on&&'Notification'in window&&Notification.permission==='default')Notification.requestPermission();R(true);};});
+  // Notification test
+  const nt=document.getElementById('notif-test');
+  if(nt)nt.onclick=async()=>{
+    const st=document.getElementById('notif-status');
+    if(!('Notification'in window)){if(st)st.textContent='Dieser Browser unterstützt keine Benachrichtigungen.';return;}
+    let perm=Notification.permission;
+    if(perm==='default')perm=await Notification.requestPermission();
+    if(perm==='granted'){
+      const q=quotesForGoal()[0]||{t:'Bleib dran.',a:''};
+      try{new Notification(`Hey ${S.profile.name||'du'} — Test erfolgreich!`,{body:`"${q.t}"${q.a?' — '+q.a:''}`,icon:'icon.svg'});if(st){st.textContent='Gesendet! Wenn nichts erscheint, prüfe die Hinweise unten.';st.style.color='var(--gr)';}}catch(e){if(st)st.textContent='Fehler beim Senden: '+e.message;}
+    }else{
+      if(st){st.textContent='Berechtigung verweigert. Erlaube Benachrichtigungen in den Browser-Einstellungen.';st.style.color='var(--go)';}
+    }
+  };
   // Referral copy
   const rcb=document.getElementById('ref-copy');
   if(rcb)rcb.onclick=()=>{navigator.clipboard?.writeText('mfm.app/join/'+S.referralCode).catch(()=>{});rcb.textContent='Kopiert ✓';rcb.style.background='var(--gr)';setTimeout(()=>{rcb.textContent='Kopieren';rcb.style.background='var(--ac)';},2000);};
@@ -1300,8 +1462,8 @@ function loadState(){
       S.mood=null;S.sleep='';
       S.mp='intro';S.mq=0;S.ma=[];S.mc='';S.mf='';S.md=false;
       S.ep='intro';S.eq=0;S.ea=[];S.ec='';S.ef='';S.ed=false;
-      S.tmSecs=25*60;S.tmSessions=0;S.tmTaskIdx=-1;
-      S.shieldUsed=false;S.chDone=false;
+      S.tmSecs=(S.tmMin||25)*60;S.tmSessions=0;S.tmTaskIdx=-1;
+      S.shieldUsed=false;S.chDone=false;S.waveToday=false;
       // Habits: Häkchen zurücksetzen, Gewohnheiten behalten
       S.habits=S.habits.map(h=>({...h,ck:false}));
       // Zitat des Tages wechseln
