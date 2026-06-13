@@ -434,7 +434,24 @@ ${S.referralCount>0?`<div style="background:rgba(45,212,160,.08);border-radius:9
 </div>
 <!-- ACHIEVEMENTS -->
 <div class="ca" style="background:rgba(245,166,35,.04);border-color:rgba(245,166,35,.15)"><div class="lb" style="color:var(--go)">🏆 ACHIEVEMENTS</div><div style="display:flex;flex-wrap:wrap;gap:0">${S.ach.map(a=>`<span class="bdg${a.e?' on':''}">${a.ic} ${a.t}</span>`).join('')}</div></div>
-${!API_KEY?`<details style="margin-top:4px"><summary style="font-size:11px;color:var(--mu);cursor:pointer;padding:6px 0;font-family:var(--fb)">⚙️ Erweitert — eigener KI-Schlüssel (optional)</summary><div id="kb"><span style="font-size:11px;color:var(--go);font-weight:700">API KEY</span><span style="font-size:11px;color:var(--mu)"> — Key von </span><a href="https://console.anthropic.com" target="_blank" style="color:var(--go);font-size:11px">console.anthropic.com</a><input id="ki" type="password" placeholder="sk-ant-..."><button onclick="(function(){const v=document.getElementById('ki').value.trim();if(v){API_KEY=v;try{localStorage.setItem(SK+'_key',v);}catch(e){}R();}})()">Speichern</button></div></details>`:''}
+<!-- KI-STATUS & TEST -->
+<div class="ca cl" style="margin-top:4px"><div class="lb" style="color:var(--cy)">🤖 KI-STATUS</div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px;background:var(--su);border-radius:10px;border:1px solid var(--bo)">
+  <div style="font-size:22px">${API_KEY?'🟢':'⚪'}</div>
+  <div style="flex:1"><div style="font-size:13px;font-weight:600;color:${API_KEY?'var(--gr)':'var(--mu)'}">${API_KEY?'KI-Schlüssel hinterlegt':'Kein Schlüssel — lokale Engine aktiv'}</div><div style="font-size:11px;color:var(--mu);margin-top:1px">${API_KEY?'Feedbacks werden von Claude formuliert':'Feedbacks kommen aus der eingebauten Engine (0€)'}</div></div>
+</div>
+${API_KEY?`<button class="bt btc" id="test-key">🔌 Verbindung testen</button><div id="key-test-out" style="display:none;font-size:12px;line-height:1.6;padding:10px;border-radius:10px;margin-top:4px"></div>`:''}
+<details style="margin-top:4px"><summary style="font-size:11px;color:var(--mu);cursor:pointer;padding:6px 0;font-family:var(--fb)">⚙️ ${API_KEY?'Schlüssel ändern':'Eigener KI-Schlüssel (optional)'}</summary><div id="kb"><span style="font-size:11px;color:var(--mu)">Key von </span><a href="https://console.anthropic.com" target="_blank" style="color:var(--go);font-size:11px">console.anthropic.com</a><input id="ki" type="password" placeholder="sk-ant-..."><button onclick="(function(){const v=document.getElementById('ki').value.trim();if(v){API_KEY=v;try{localStorage.setItem(SK+'_key',v);}catch(e){}R();}})()">Speichern</button></div></details>
+</div>
+
+<!-- TEST / DEMO -->
+<div class="ca yl"><div class="lb" style="color:var(--go)">🧪 TEST-MODUS</div>
+<p style="font-size:12px;color:var(--mu);line-height:1.55;margin-bottom:10px">Fülle die App mit 7 Tagen Beispieldaten, um sofort zu sehen wie Muster-Analyse, Berichte und Erkenntnisse mit echten Daten aussehen — ohne 7 Tage zu warten.</p>
+<button class="bt btp" id="load-demo">📊 7 Tage Demo-Daten laden</button>
+<p style="font-size:11px;color:var(--mu);text-align:center">Überschreibt aktuelle Verlaufsdaten. Profil & Ziele bleiben.</p>
+</div>
+
+${!API_KEY?'':''}
 <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bo)">
   <button onclick="clearAllData()" style="width:100%;padding:11px;border-radius:12px;background:rgba(255,107,117,.08);border:1px solid rgba(255,107,117,.2);color:var(--rd);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">🗑 Alle Daten löschen & neu starten</button>
   <p style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;line-height:1.5">Alle gespeicherten Daten werden unwiderruflich gelöscht.</p>
@@ -902,6 +919,58 @@ function EV(){
   const mm2=document.getElementById('mm');if(mm2)mm2.onclick=()=>{S.mentor='sanft';R(true);};
   document.querySelectorAll('[data-mg]').forEach(inp=>{inp.oninput=e=>{S.monthGoals[parseInt(inp.dataset.mg)].g=e.target.value;};});
   const aig=document.getElementById('aigls');if(aig)aig.onclick=async()=>{if(!API_KEY){aig.textContent='✨ Bald verfügbar';setTimeout(()=>{aig.textContent='✨ Ziele vorschlagen';},2000);return;}aig.disabled=true;aig.textContent='✨ Wird erstellt...';const r=await ai([{role:'user',content:`Ziel: ${S.profile.goal||'nicht gesetzt'}. Bisherige Gewohnheiten: ${S.habits.map(h=>h.t).join(', ')||'keine'}`}],'Coach. Schlage 3 konkrete Monatsziele als JSON Array (max 8 Wörter je). NUR Array. Auf Deutsch.');try{JSON.parse(r.replace(/```json|```/g,'').trim()).slice(0,3).forEach((g,i)=>{if(S.monthGoals[i])S.monthGoals[i].g=g;});}catch{}R();};
+
+  // API Key Verbindungstest
+  const tk=document.getElementById('test-key');
+  if(tk)tk.onclick=async()=>{
+    const out=document.getElementById('key-test-out');
+    tk.disabled=true;tk.textContent='🔌 Teste...';
+    if(out){out.style.display='block';out.style.background='rgba(56,200,245,.08)';out.style.color='var(--cy)';out.textContent='Sende Test-Anfrage an Claude...';}
+    const r=await ai([{role:'user',content:'Antworte mit genau einem Wort: Verbindung erfolgreich.'}],'Du bist ein Test. Antworte knapp.');
+    tk.disabled=false;tk.textContent='🔌 Verbindung testen';
+    if(out){
+      if(r===null){out.style.background='rgba(255,107,117,.1)';out.style.color='var(--rd)';out.textContent='⚠ Kein Schlüssel hinterlegt.';}
+      else if(r.toLowerCase().includes('fehler')||r.toLowerCase().includes('error')||r.toLowerCase().includes('verbindungs')){out.style.background='rgba(255,107,117,.1)';out.style.color='var(--rd)';out.textContent='✗ Fehlgeschlagen: '+r+' — Prüfe den Schlüssel und dein Guthaben auf console.anthropic.com.';}
+      else{out.style.background='rgba(45,212,160,.1)';out.style.color='var(--gr)';out.textContent='✓ Verbindung erfolgreich! Claude antwortet: "'+r+'" — deine Feedbacks werden jetzt von der KI formuliert.';}
+    }
+  };
+
+  // Demo-Daten laden
+  const ld=document.getElementById('load-demo');
+  if(ld)ld.onclick=()=>{
+    ld.disabled=true;ld.textContent='⏳ Lade Demo-Daten...';
+    try{
+      const today=new Date();
+      const sleeps=['22:15','23:50','22:30','00:30','22:00','23:10','22:45'];
+      const scores=[7,4,8,3,9,6,8];
+      const slqs=[4,2,4,1,5,3,5];
+      const ens=[4,2,4,2,5,3,4];
+      const diss=['😴 Müdigkeit','📱 Handy','— Nichts','📱 Handy','— Nichts','⏳ Aufschieben','📱 Handy'];
+      const fails=[null,'📱 Handy',null,'😴 Zu müde',null,'🔁 Aufgeschoben',null];
+      S.history=[];
+      for(let i=6;i>=0;i--){
+        const d=new Date(today);d.setDate(d.getDate()-i);
+        const idx=6-i;
+        S.history.push({
+          date:d.toLocaleDateString('de'),
+          s:scores[idx],mood:Math.min(4,Math.floor(scores[idx]/2.5)),
+          sleep:sleeps[idx],slq:slqs[idx],en:ens[idx],
+          dis:diss[idx],fail:fails[idx],wd:d.getDay(),note:'Demo-Eintrag'
+        });
+      }
+      S.streak=7;
+      S.ach.forEach(a=>{if(['s7','c31','all'].includes(a.id))a.e=true;});
+      // Auch ein paar Beispiel-Gewohnheiten + Monatsziele falls leer
+      if(S.habits.length===0)S.habits=[{t:'💧 Wasser trinken',ck:true},{t:'🏃 Sport',ck:false},{t:'📵 Kein Handy bis 10h',ck:true}];
+      if(!S.monthGoals.some(g=>g.g)){S.monthGoals=[{g:'Täglich Sport vor 10 Uhr',p:62},{g:'Kein Handy bis 10 Uhr',p:48},{g:'Eigenes Projekt 30 Min',p:55}];}
+      S.ed=true; // markiert heutigen Abend-Check-in als erledigt für Demo
+      S.sc='b'; // direkt zu Berichten springen
+      R();
+    }catch(e){
+      ld.disabled=false;ld.textContent='⚠ Fehler — nochmal versuchen';
+      console.log('Demo error:',e);
+    }
+  };
   // Rank badge
   const rb=document.getElementById('rank-badge');if(rb)rb.onclick=openRankModal;
 
