@@ -422,14 +422,14 @@ function getWeeklyCard(){
 
 // Proxy-URL (Cloudflare Worker) — KI läuft hierüber, kein Key im Browser nötig
 const PROXY_URL='https://mfm-proxy.gustav-business.workers.dev';
-const AI_MODEL='claude-3-5-haiku-20241022';
+const AI_MODEL='claude-haiku-4-5';
 let _lastAiError='';
-async function ai(msgs,sys){
+async function ai(msgs,sys,model){
   try{
     const r=await fetch(PROXY_URL,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:AI_MODEL,max_tokens:600,system:sys,messages:msgs})
+      body:JSON.stringify({model:model||AI_MODEL,max_tokens:600,system:sys,messages:msgs})
     });
     const raw=await r.text();
     let d=null;try{d=JSON.parse(raw);}catch(e){}
@@ -776,7 +776,7 @@ async function openWeekly(){
   if(true){
     const ctx=`${n}, Ziel: "${S.profile.goal||'nicht gesetzt'}". Diese Woche: Ø Score ${r.avg.toFixed(1)}/10${r.pAvg!==null?` (Vorwoche ${r.pAvg.toFixed(1)})`:''}. Ziel-Fortschritt: ${r.gp.pct}%. Erkenntnisse: ${r.lessons.join(' | ')||'keine klaren Muster'}.`;
     const sys=sysP()+' Schreibe einen motivierenden Wochen-Rückblick (4-5 Sätze): 1) Würdige konkret was diese Woche gut lief, 2) benenne das wichtigste Lernfeld aus den Fehlern, 3) gib EINEN konkreten Fokus für nächste Woche der zum Ziel führt, 4) motiviere zum Dranbleiben — auch wenn wenig Fortschritt sichtbar ist. Sprich '+n+' direkt an.';
-    const resp=await ai([{role:'user',content:ctx}],sys);
+    const resp=await ai([{role:'user',content:ctx}],sys,'claude-sonnet-4-6');
     coachText=(resp===null)?localWeeklyText(r,n):resp;
   }else{
     coachText=localWeeklyText(r,n);
