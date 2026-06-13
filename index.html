@@ -176,7 +176,6 @@ svg{display:block;width:100%;height:100%}
   <div id="tut-back"></div>
 </div>
 <script>
-let API_KEY='';
 
 // ── SVG ICON SYSTEM (schlank, modern, schnell) ──────────
 const IC={
@@ -421,9 +420,23 @@ function getWeeklyCard(){
   </div>`;
 }
 
+// Proxy-URL (Cloudflare Worker) — KI läuft hierüber, kein Key im Browser nötig
+const PROXY_URL='https://mfm-proxy.gustav-business.workers.dev';
 async function ai(msgs,sys){
-  if(!API_KEY)return null;
-  try{const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:sys,messages:msgs})});const d=await r.json();return d.content?.[0]?.text||'Fehler.';}catch{return'Verbindungsfehler.';}
+  // Bevorzugt Proxy; wenn nicht erreichbar, lokale Engine (null)
+  try{
+    const r=await fetch(PROXY_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:sys,messages:msgs})
+    });
+    if(!r.ok)return null;
+    const d=await r.json();
+    return d.content?.[0]?.text||null;
+  }catch(e){
+    console.log('ai proxy error:',e);
+    return null;
+  }
 }
 
 function tl(tasks,pfx){return tasks.map((t,i)=>`<div class="ti"><div class="cb${t.ck?' ck':''}" data-i="${pfx}${i}">${t.ck?CHK:''}</div><span style="font-size:13px;color:${t.ck?'var(--mu)':'var(--tx)'};text-decoration:${t.ck?'line-through':''};line-height:1.55">${t.t}</span></div>`).join('');}
@@ -660,13 +673,12 @@ ${S.referralCount>0?`<div style="background:rgba(45,212,160,.08);border-radius:9
 <!-- ACHIEVEMENTS -->
 <div class="ca" style="background:rgba(245,166,35,.04);border-color:rgba(245,166,35,.15)"><div class="lb" style="color:var(--go)">🏆 ACHIEVEMENTS</div><div style="display:flex;flex-wrap:wrap;gap:0">${S.ach.map(a=>`<span class="bdg${a.e?' on':''}">${a.ic} ${a.t}</span>`).join('')}</div></div>
 <!-- KI-STATUS & TEST -->
-<div class="ca cl" style="margin-top:4px"><div class="lb" style="color:var(--cy)">🤖 KI-STATUS</div>
+<div class="ca cl" style="margin-top:4px"><div class="lb" style="color:var(--cy)">KI-COACH STATUS</div>
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px;background:var(--su);border-radius:10px;border:1px solid var(--bo)">
-  <div style="font-size:22px">${API_KEY?'🟢':'⚪'}</div>
-  <div style="flex:1"><div style="font-size:13px;font-weight:600;color:${API_KEY?'var(--gr)':'var(--mu)'}">${API_KEY?'KI-Schlüssel hinterlegt':'Kein Schlüssel — lokale Engine aktiv'}</div><div style="font-size:11px;color:var(--mu);margin-top:1px">${API_KEY?'Feedbacks werden von Claude formuliert':'Feedbacks kommen aus der eingebauten Engine (0€)'}</div></div>
+  <span style="width:22px;height:22px;display:inline-flex;color:var(--gr)">${IC.i('sparkle','currentColor',2)}</span>
+  <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--gr)">KI-Coach aktiv</div><div style="font-size:11px;color:var(--mu);margin-top:1px">Feedbacks werden von Claude formuliert</div></div>
 </div>
-${API_KEY?`<button class="bt btc" id="test-key">🔌 Verbindung testen</button><div id="key-test-out" style="display:none;font-size:12px;line-height:1.6;padding:10px;border-radius:10px;margin-top:4px"></div>`:''}
-<details style="margin-top:4px"><summary style="font-size:11px;color:var(--mu);cursor:pointer;padding:6px 0;font-family:var(--fb)">⚙️ ${API_KEY?'Schlüssel ändern':'Eigener KI-Schlüssel (optional)'}</summary><div id="kb"><span style="font-size:11px;color:var(--mu)">Key von </span><a href="https://console.anthropic.com" target="_blank" style="color:var(--go);font-size:11px">console.anthropic.com</a><input id="ki" type="password" placeholder="sk-ant-..."><button onclick="(function(){const v=document.getElementById('ki').value.trim();if(v){API_KEY=v;try{localStorage.setItem(SK+'_key',v);}catch(e){}R();}})()">Speichern</button></div></details>
+<button class="bt btc" id="test-key">Verbindung testen</button><div id="key-test-out" style="display:none;font-size:12px;line-height:1.6;padding:10px;border-radius:10px;margin-top:4px"></div>
 </div>
 
 <!-- TEST / DEMO -->
@@ -676,7 +688,6 @@ ${API_KEY?`<button class="bt btc" id="test-key">🔌 Verbindung testen</button><
 <p style="font-size:11px;color:var(--mu);text-align:center">Überschreibt aktuelle Verlaufsdaten. Profil & Ziele bleiben.</p>
 </div>
 
-${!API_KEY?'':''}
 <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bo)">
   <button onclick="clearAllData()" style="width:100%;padding:11px;border-radius:12px;background:rgba(255,107,117,.08);border:1px solid rgba(255,107,117,.2);color:var(--rd);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">🗑 Alle Daten löschen & neu starten</button>
   <p style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;line-height:1.5">Alle gespeicherten Daten werden unwiderruflich gelöscht.</p>
@@ -713,14 +724,14 @@ async function openWeekly(){
       <button id="wk-close" style="background:var(--su);border:1px solid var(--bo);border-radius:50%;width:32px;height:32px;color:var(--mu);font-size:16px;cursor:pointer;font-family:var(--fb)">×</button>
     </div>
     <div id="wk-body">
-      <div class="ca" style="text-align:center;padding:18px"><div style="width:30px;height:30px;margin:0 auto 10px;color:var(--ac);animation:cbp 1s ease infinite">${IC.i('sparkle','#6B7CFF',2)}</div><div style="font-size:13px;color:var(--mu)">${API_KEY?'Dein Coach analysiert deine Woche...':'Werte deine Woche aus...'}</div></div>
+      <div class="ca" style="text-align:center;padding:18px"><div style="width:30px;height:30px;margin:0 auto 10px;color:var(--ac);animation:cbp 1s ease infinite">${IC.i('sparkle','#6B7CFF',2)}</div><div style="font-size:13px;color:var(--mu)">Dein Coach analysiert deine Woche...</div></div>
     </div>`;
   ov.classList.add('open');
   document.getElementById('wk-close').onclick=()=>ov.classList.remove('open');
 
   // Build body content
   let coachText='';
-  if(API_KEY){
+  if(true){
     const ctx=`${n}, Ziel: "${S.profile.goal||'nicht gesetzt'}". Diese Woche: Ø Score ${r.avg.toFixed(1)}/10${r.pAvg!==null?` (Vorwoche ${r.pAvg.toFixed(1)})`:''}. Ziel-Fortschritt: ${r.gp.pct}%. Erkenntnisse: ${r.lessons.join(' | ')||'keine klaren Muster'}.`;
     const sys=sysP()+' Schreibe einen motivierenden Wochen-Rückblick (4-5 Sätze): 1) Würdige konkret was diese Woche gut lief, 2) benenne das wichtigste Lernfeld aus den Fehlern, 3) gib EINEN konkreten Fokus für nächste Woche der zum Ziel führt, 4) motiviere zum Dranbleiben — auch wenn wenig Fortschritt sichtbar ist. Sprich '+n+' direkt an.';
     const resp=await ai([{role:'user',content:ctx}],sys);
@@ -1300,20 +1311,19 @@ function EV(){
   const ms3=document.getElementById('ms');if(ms3)ms3.onclick=()=>{S.mentor='streng';R(true);};
   const mm2=document.getElementById('mm');if(mm2)mm2.onclick=()=>{S.mentor='sanft';R(true);};
   document.querySelectorAll('[data-mg]').forEach(inp=>{inp.oninput=e=>{S.monthGoals[parseInt(inp.dataset.mg)].g=e.target.value;};});
-  const aig=document.getElementById('aigls');if(aig)aig.onclick=async()=>{if(!API_KEY){aig.textContent='✨ Bald verfügbar';setTimeout(()=>{aig.textContent='✨ Ziele vorschlagen';},2000);return;}aig.disabled=true;aig.textContent='✨ Wird erstellt...';const r=await ai([{role:'user',content:`Ziel: ${S.profile.goal||'nicht gesetzt'}. Bisherige Gewohnheiten: ${S.habits.map(h=>h.t).join(', ')||'keine'}`}],'Coach. Schlage 3 konkrete Monatsziele als JSON Array (max 8 Wörter je). NUR Array. Auf Deutsch.');try{JSON.parse(r.replace(/```json|```/g,'').trim()).slice(0,3).forEach((g,i)=>{if(S.monthGoals[i])S.monthGoals[i].g=g;});}catch{}R();};
+  const aig=document.getElementById('aigls');if(aig)aig.onclick=async()=>{aig.disabled=true;aig.textContent='Wird erstellt...';const r=await ai([{role:'user',content:`Ziel: ${S.profile.goal||'nicht gesetzt'}. Bisherige Gewohnheiten: ${S.habits.map(h=>h.t).join(', ')||'keine'}`}],'Coach. Schlage 3 konkrete Monatsziele als JSON Array (max 8 Wörter je). NUR Array. Auf Deutsch.');if(r===null){aig.disabled=false;aig.textContent='Gerade nicht verfügbar';setTimeout(()=>{aig.textContent='Ziele vorschlagen';},2000);return;}try{JSON.parse(r.replace(/```json|```/g,'').trim()).slice(0,5).forEach((g,i)=>{if(!S.monthGoals[i])S.monthGoals.push({g:'',p:0});S.monthGoals[i].g=g;});}catch{}R();};
 
-  // API Key Verbindungstest
+  // KI-Verbindungstest (über Proxy)
   const tk=document.getElementById('test-key');
   if(tk)tk.onclick=async()=>{
     const out=document.getElementById('key-test-out');
-    tk.disabled=true;tk.textContent='🔌 Teste...';
+    tk.disabled=true;tk.textContent='Teste...';
     if(out){out.style.display='block';out.style.background='rgba(56,200,245,.08)';out.style.color='var(--cy)';out.textContent='Sende Test-Anfrage an Claude...';}
-    const r=await ai([{role:'user',content:'Antworte mit genau einem Wort: Verbindung erfolgreich.'}],'Du bist ein Test. Antworte knapp.');
-    tk.disabled=false;tk.textContent='🔌 Verbindung testen';
+    const r=await ai([{role:'user',content:'Antworte mit genau einem kurzen Satz: Verbindung erfolgreich.'}],'Du bist ein Test. Antworte knapp auf Deutsch.');
+    tk.disabled=false;tk.textContent='Verbindung testen';
     if(out){
-      if(r===null){out.style.background='rgba(255,107,117,.1)';out.style.color='var(--rd)';out.textContent='⚠ Kein Schlüssel hinterlegt.';}
-      else if(r.toLowerCase().includes('fehler')||r.toLowerCase().includes('error')||r.toLowerCase().includes('verbindungs')){out.style.background='rgba(255,107,117,.1)';out.style.color='var(--rd)';out.textContent='✗ Fehlgeschlagen: '+r+' — Prüfe den Schlüssel und dein Guthaben auf console.anthropic.com.';}
-      else{out.style.background='rgba(45,212,160,.1)';out.style.color='var(--gr)';out.textContent='✓ Verbindung erfolgreich! Claude antwortet: "'+r+'" — deine Feedbacks werden jetzt von der KI formuliert.';}
+      if(r===null){out.style.background='rgba(240,107,107,.1)';out.style.color='var(--rd)';out.textContent='Fehlgeschlagen. Der Proxy ist nicht erreichbar — die App nutzt solange die lokale Engine. Prüfe, ob der Cloudflare Worker läuft.';}
+      else{out.style.background='rgba(61,214,140,.1)';out.style.color='var(--gr)';out.textContent='Erfolgreich! Claude antwortet: "'+r+'"';}
     }
   };
 
@@ -1408,7 +1418,6 @@ setInterval(tick,30000);tick();
 const SK='mfm_v4';
 
 // API Key aus localStorage laden (einmalig setzen, dann immer da)
-try{const sk=localStorage.getItem(SK+'_key');if(sk)API_KEY=sk;}catch(e){}
 
 // Felder die dauerhaft gespeichert bleiben (über Tage hinweg)
 const PERSIST=['profile','mentor','monthGoals','habits','notifs','partner',
