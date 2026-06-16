@@ -298,18 +298,26 @@ const QUOTE_LIB={
 // KI-basierte Ziel-Analyse: geht konkret aufs individuelle Ziel ein,
 // fragt bei vagen Zielen nach, gibt fundierte (keine halluzinierten) Schritte
 async function fetchGoalSuggestions(goal){
-  const sys=`Du bist ein fundierter, ehrlicher Coach. Der Nutzer nennt sein Lebensziel. Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, kein Text drumherum, keine Markdown-Zäune.
+  const p=S.profile;
+  const ctx=`Ziel: ${goal}
+Warum dieses Ziel wichtig ist: ${p.why||'nicht angegeben'}
+Aktueller Startpunkt / wo der Nutzer gerade steht: ${p.start||'nicht angegeben'}
+Was schon versucht wurde: ${p.tried||'nicht angegeben'}
+Alter: ${p.age||'unbekannt'}`;
+  const sys=`Du bist ein fundierter, ehrlicher Coach. Du bekommst das Ziel eines Nutzers PLUS seinen aktuellen Startpunkt und sein Warum. Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, kein Text drumherum, keine Markdown-Zäune.
 
 Schema:
-{"clear": true/false, "principle": "...", "steps": ["...","...","...","..."], "question": "..."}
+{"clear": true/false, "principle": "...", "assessment": "...", "steps": ["...","...","...","..."], "question": "..."}
 
 Vorgehen:
-- Greife IMMER die konkreten, fassbaren Bestandteile des Ziels auf und nenne sie beim Namen. Beispiele: "nach Zypern auswandern" → Aufenthalt/Visum, Wohnsitz, Sprache, ortsunabhängiges Einkommen. "vom Trading leben" → konsistente Strategie, Risikomanagement, Journaling, Startkapital. "reich werden durch Trading und auswandern" ist KONKRET genug (clear=true) — behandle es als zusammengesetztes Ziel und gib Schritte zu den fassbaren Teilen.
-- clear=true, wenn mindestens ein konkreter Weg erkennbar ist: "principle" = das nachgewiesene Grundprinzip für GENAU dieses Ziel (1-2 Sätze, ehrlich, ohne Garantien oder Reichtums-Versprechen). "steps" = 4 konkrete, täglich oder wöchentlich trackbare Handlungen, die wirklich in Richtung DIESES Ziels führen und die der Nutzer in einer Habit-App abhaken kann. "question"="".
-- clear=false NUR wenn das Ziel rein abstrakt ohne jeden fassbaren Anker ist (z.B. nur "glücklich sein", nur "erfolgreich"): dann "question" = EINE konkrete Rückfrage zum Schärfen, "principle" = kurzer Hinweis warum, "steps"=[].
-- Nenne keine erfundenen Zahlen, keine Versprechen wie "so wirst du reich". Bleib realistisch und beziehe dich wörtlich auf das, was der Nutzer geschrieben hat.
+- "assessment" = 1-2 Sätze, die den AKTUELLEN STAND des Nutzers einordnen, basierend auf seinem Startpunkt. Sei ehrlich aber ermutigend: Sag ob er näher dran ist als gedacht oder noch an den Basics arbeiten muss. Beziehe dich konkret auf das, was er über seinen Stand geschrieben hat.
+- Zerlege das Ziel in seine EINZELNEN BESTANDTEILE und gehe punktuell darauf ein (nicht nur aufs Gesamtziel). Beispiel "reich werden durch Trading und nach Zypern auswandern": behandle Trading-Skill, Kapitalaufbau UND Auswanderung als separate Stränge.
+- "principle" = das nachgewiesene Grundprinzip für DIESES Ziel, das auch das WARUM des Nutzers aufgreift (2-3 Sätze, ehrlich, ohne Garantien/Reichtums-Versprechen).
+- "steps" = 4 konkrete, täglich/wöchentlich abhakbare Handlungen, die GENAU zu seinem Startpunkt passen. Wer noch bei den Basics steht, bekommt Basis-Schritte; wer fortgeschritten ist, bekommt anspruchsvollere. Die Schritte sollen die einzelnen Ziel-Bestandteile abdecken.
+- clear=false NUR wenn das Ziel rein abstrakt ohne jeden Anker ist (nur "glücklich sein"): dann "question" stellen, andere Felder leer.
+- Keine erfundenen Zahlen, keine Versprechen. Realistisch, wörtlich auf den Nutzer bezogen.
 - Deutsch, Du-Form.`;
-  const r=await ai([{role:'user',content:`Mein Ziel: ${goal}`}],sys,'claude-sonnet-4-6');
+  const r=await ai([{role:'user',content:ctx}],sys,'claude-sonnet-4-6');
   if(r===null)return null;
   try{
     const clean=r.replace(/```json|```/g,'').trim();
@@ -409,7 +417,7 @@ const CHK='<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="
 
 const S={
   sc:'ob',ob:1,tut:0,isPremium:true,planType:'monthly',theme:'dark',// monthly|annual
-  profile:{name:'',age:'',goal:''},
+  profile:{name:'',age:'',goal:'',why:'',start:'',tried:''},
   mentor:'sanft',
   tasks:[],pt:'',tg:false,tl:false,
   mood:null,sleep:'',
@@ -808,6 +816,14 @@ ${S.referralCount>0?`<div style="background:rgba(45,212,160,.08);border-radius:9
 <p style="font-size:11px;color:var(--mu);text-align:center">Überschreibt aktuelle Verlaufsdaten. Profil & Ziele bleiben.</p>
 </div>
 
+<!-- DATEN-BACKUP -->
+<div class="ca al"><div class="lb" style="color:var(--ac)">DATEN-SICHERUNG</div>
+<p style="font-size:12px;color:var(--mu);line-height:1.55;margin-bottom:12px">Sichere deine Daten als Datei. So gehen sie beim Neu-Installieren der App nicht verloren — du lädst die Datei einfach wieder.</p>
+<button class="bt btc" id="export-backup" style="margin-bottom:8px">Backup herunterladen</button>
+<label for="import-file" class="bt btp" style="display:block;text-align:center;cursor:pointer;margin:0">Backup wiederherstellen</label>
+<input id="import-file" type="file" accept="application/json,.json" style="display:none">
+<div id="backup-status" style="font-size:11px;text-align:center;margin-top:8px;line-height:1.5"></div>
+</div>
 <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bo)">
   <button onclick="clearAllData()" style="width:100%;padding:11px;border-radius:12px;background:rgba(255,107,117,.08);border:1px solid rgba(255,107,117,.2);color:var(--rd);font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer">🗑 Alle Daten löschen & neu starten</button>
   <p style="font-size:10px;color:var(--mu);text-align:center;margin-top:6px;line-height:1.5">Alle gespeicherten Daten werden unwiderruflich gelöscht.</p>
@@ -1174,32 +1190,43 @@ function confetti(){
 // ── ONBOARDING
 function rOb(){
   const s=S.ob;
-  const dots=`<div style="display:flex;justify-content:center;gap:7px;margin-bottom:18px">${[1,2,3,4,5].map(i=>`<div class="dot${s===i?' on':''}"></div>`).join('')}</div>`;
-  if(s===1)return`<div class="ob"><div></div><div style="text-align:center;padding:0 10px"><div style="width:72px;height:72px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;border-radius:22px;background:linear-gradient(135deg,var(--ac),var(--pu))"><span style="width:38px;height:38px;display:inline-flex;color:#fff">${IC.i('sparkle','#fff',1.8)}</span></div><div style="font-family:var(--fd);font-weight:800;font-size:32px;letter-spacing:-.5px;line-height:1.2;margin-bottom:12px">My Future Me</div><p style="color:var(--so);font-size:14px;line-height:1.75;max-width:230px;margin:0 auto">Dein täglicher Coach.<br>Dein System. Dein Wachstum.</p></div><div>${dots}<button class="bt btp" id="obn">Starten →</button><p style="text-align:center;font-size:11px;color:var(--mu);margin-top:4px">Kostenlos · Premium verfügbar</p></div></div>`;
-  if(s===2)return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 1 VON 4</div><div class="h2" style="margin-bottom:6px">Wer bist du?</div></div><div style="margin-bottom:8px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">DEIN NAME *</div><input class="inp" id="oname" placeholder="z.B. Max" value="${S.profile.name}"></div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">ALTER</div><input class="inp" id="oage" type="number" placeholder="21" value="${S.profile.age}" style="max-width:100px"></div><div><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">WIE WILLST DU WERDEN? *</div><textarea class="ta" id="ogoal" style="min-height:78px" placeholder="Beschreibe die Person, die du werden willst...">${S.profile.goal}</textarea></div>
+  const dots=`<div style="display:flex;justify-content:center;gap:7px;margin-bottom:18px">${[1,2,3,4,5,6].map(i=>`<div class="dot${s===i?' on':''}"></div>`).join('')}</div>`;
+  if(s===1)return`<div class="ob"><div></div><div style="text-align:center;padding:0 10px"><div style="width:88px;height:88px;margin:0 auto 20px"><svg viewBox="0 0 100 100" style="width:100%;height:100%"><defs><linearGradient id="logoG" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="var(--ac)"/><stop offset="1" stop-color="var(--pu)"/></linearGradient></defs><rect width="100" height="100" rx="24" fill="#10141F"/><circle cx="30" cy="32" r="7" fill="url(#logoG)"/><circle cx="70" cy="32" r="7" fill="var(--go)"/><path d="M30 41 L30 74 M30 50 L50 64 L70 50 M70 41 L70 74" fill="none" stroke="url(#logoG)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div style="font-family:var(--fd);font-weight:800;font-size:32px;letter-spacing:-.5px;line-height:1.2;margin-bottom:12px">My Future Me</div><p style="color:var(--so);font-size:14px;line-height:1.75;max-width:230px;margin:0 auto">Dein täglicher Coach.<br>Dein System. Dein Wachstum.</p></div><div>${dots}<button class="bt btp" id="obn">Starten →</button><p style="text-align:center;font-size:11px;color:var(--mu);margin-top:4px">Kostenlos · Premium verfügbar</p></div></div>`;
+  if(s===2)return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 1 VON 5</div><div class="h2" style="margin-bottom:6px">Wer bist du?</div></div><div style="margin-bottom:8px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">DEIN NAME *</div><input class="inp" id="oname" placeholder="z.B. Max" value="${S.profile.name}"></div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">ALTER</div><input class="inp" id="oage" type="number" placeholder="21" value="${S.profile.age}" style="max-width:100px"></div><div><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">WIE WILLST DU WERDEN? *</div><textarea class="ta" id="ogoal" style="min-height:78px" placeholder="Beschreibe die Person, die du werden willst...">${S.profile.goal}</textarea></div>
 <div style="margin-top:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:7px;font-weight:600">NOCH UNSICHER? WÄHLE EINEN STARTPUNKT:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${ARCHETYPES.map((a,i)=>`<button class="arch-btn" data-arch="${i}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:11px;border:1px solid var(--bo);background:var(--su);color:var(--so);font-size:12px;font-family:var(--fb);cursor:pointer"><span style="width:15px;height:15px;display:inline-flex;color:var(--ac)">${IC.i(a.ic,'currentColor',1.8)}</span>${a.t}</button>`).join('')}</div><p style="font-size:10px;color:var(--mu);margin-top:8px;line-height:1.5">Tipp: Wähle einen Bereich — wir füllen Ziel & Vorschläge aus. Du kannst alles danach anpassen.</p></div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
-  if(s===3){
+  if(s===3)return`<div class="ob"><div><div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 2 VON 5</div><div class="h2" style="margin-bottom:6px">Wo stehst du gerade?</div><p style="font-size:12px;color:var(--so);line-height:1.6;max-width:280px;margin:0 auto">Ein Ziel zu kennen reicht nicht — dein Coach muss wissen, wo du <em>startest</em>. Manche sind näher dran als sie denken, andere am Anfang. Beides ist völlig okay.</p></div>
+
+<div style="background:rgba(91,141,239,.08);border:1px solid rgba(91,141,239,.2);border-radius:12px;padding:11px 13px;margin-bottom:16px;display:flex;gap:9px;align-items:flex-start"><span style="width:16px;height:16px;display:inline-flex;flex-shrink:0;margin-top:1px;color:var(--ac)">${IC.i('brain','currentColor',2)}</span><p style="font-size:11.5px;color:var(--so);line-height:1.6;margin:0">Sei ehrlich zu dir — niemand sieht das außer deinem Coach. Nur eine ehrliche Selbsteinschätzung bringt dich wirklich weiter. Beschönigen hilft niemandem.</p></div>
+
+<div style="margin-bottom:14px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">WARUM IST DIR DIESES ZIEL WICHTIG? *</div><textarea class="ta" id="owhy" style="min-height:64px" placeholder="z.B. Ich will unabhängig sein und meiner Familie etwas bieten können...">${S.profile.why}</textarea><p style="font-size:10px;color:var(--mu);margin-top:4px;line-height:1.5">Tipp: Das Warum trägt dich an schweren Tagen. Je echter, desto stärker.</p></div>
+
+<div style="margin-bottom:14px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">WO STEHST DU HEUTE? *</div><textarea class="ta" id="ostart" style="min-height:72px" placeholder="z.B. Ich treibe 1x pro Woche unregelmäßig Sport und esse oft auswärts...">${S.profile.start}</textarea><p style="font-size:10px;color:var(--mu);margin-top:4px;line-height:1.5">Tipp: Beschreibe deinen Ist-Zustand konkret — Zahlen, Häufigkeit, Gewohnheiten. Nicht wie du sein willst, sondern wie es <em>jetzt</em> ist.</p></div>
+
+<div><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">WAS HAST DU SCHON VERSUCHT?</div><textarea class="ta" id="otried" style="min-height:56px" placeholder="z.B. Schon paar Mal angefangen, aber nach 2 Wochen aufgehört... (optional)">${S.profile.tried}</textarea><p style="font-size:10px;color:var(--mu);margin-top:4px;line-height:1.5">Optional — hilft deinem Coach, nicht dieselben Fehler zu wiederholen.</p></div>
+</div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
+  if(s===4){
     const aiS=S.goalSug;const loc=localGoalSuggestions(S.profile.goal);
     let inner='';
     if(S.goalSugLoading){
       inner=`<div class="es" style="min-height:240px;justify-content:center"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:18px;margin-bottom:6px">Ich analysiere dein Ziel</div><div style="font-size:13px;color:var(--mu);max-width:240px;line-height:1.6">"${S.profile.goal}"</div></div>`;
     } else if(aiS&&aiS.clear===false&&aiS.question){
-      inner=`<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 2 VON 4</div><div class="h2" style="margin-bottom:6px">Lass uns das schärfen</div></div>
+      inner=`<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 5</div><div class="h2" style="margin-bottom:6px">Lass uns das schärfen</div></div>
 <div class="insight" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><span style="width:18px;height:18px;display:inline-flex;color:var(--go)">${IC.i('brain','currentColor',2)}</span><span class="lb" style="margin-bottom:0;color:var(--go)">DEIN COACH FRAGT</span></div><p style="font-size:13px;color:var(--tx);line-height:1.7;margin:0 0 12px">${aiS.question}</p><textarea class="ta" id="goal-refine" style="min-height:64px;margin-bottom:10px" placeholder="Deine Antwort…"></textarea><button class="bt btc" id="goal-refine-go" style="margin:0">Ziel schärfen →</button></div>
 <button id="skip-refine" style="width:100%;padding:9px;background:none;border:none;color:var(--mu);font-family:var(--fb);font-size:12px;cursor:pointer">Überspringen</button>`;
     } else {
       const sug=(aiS&&aiS.clear)?aiS:loc;
       const chosen=S.monthGoals.filter(g=>g.g).map(g=>g.g);
-      inner=`<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 2 VON 4</div><div class="h2" style="margin-bottom:6px">Dein Weg zum Ziel</div><p style="font-size:12px;color:var(--mu);line-height:1.6;max-width:260px;margin:0 auto">Basierend auf deinem Ziel — tippe an, was du übernehmen willst.</p></div>
+      inner=`<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 5</div><div class="h2" style="margin-bottom:6px">Dein Weg zum Ziel</div><p style="font-size:12px;color:var(--mu);line-height:1.6;max-width:260px;margin:0 auto">Basierend auf deinem Ziel und wo du stehst — tippe an, was du übernehmen willst.</p></div>
+${(aiS&&aiS.assessment)?`<div class="ca cl" style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span style="width:16px;height:16px;display:inline-flex;color:var(--cy)">${IC.i('target','currentColor',2)}</span><span class="lb" style="margin-bottom:0;color:var(--cy)">DEINE STANDORTBESTIMMUNG</span></div><p style="font-size:12.5px;color:var(--tx);line-height:1.7;margin:0">${aiS.assessment}</p></div>`:''}
 <div class="insight" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><span style="width:18px;height:18px;display:inline-flex;color:var(--ac)">${IC.i('sparkle','currentColor',2)}</span><span class="lb" style="margin-bottom:0;color:var(--ac)">DAS PRINZIP</span></div><p style="font-size:13px;color:var(--tx);line-height:1.72;margin:0">${sug.principle}</p></div>
 ${sug.steps&&sug.steps.length?`<div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:8px">VORSCHLÄGE — TIPPEN ZUM ÜBERNEHMEN:</div><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:6px">${sug.steps.map(st=>{const on=chosen.includes(st);return `<button class="sug-chip" data-sug="${(''+st).replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;border:1px solid ${on?'var(--gr)':'var(--bo)'};background:${on?'rgba(61,214,140,.1)':'var(--su)'};color:${on?'var(--gr)':'var(--so)'};font-size:13px;font-family:var(--fb);cursor:pointer;text-align:left;font-weight:${on?'600':'400'}"><span style="width:18px;height:18px;display:inline-flex;flex-shrink:0;color:${on?'var(--gr)':'var(--mu)'}">${IC.i(on?'check':'arrowRight','currentColor',2)}</span>${st}</button>`;}).join('')}</div><p style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:4px">${chosen.length>0?chosen.length+' übernommen':'Du kannst auch ohne Auswahl weiter'}</p>`:''}`;
     }
     const showNext=!S.goalSugLoading&&!(aiS&&aiS.clear===false&&aiS.question);
     return`<div class="ob"><div>${inner}</div><div>${dots}${showNext?`<button class="bt btp" id="obn3">Weiter →</button>`:''}</div></div>`;
   }
-  if(s===4)return`<div class="ob"><div><div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 4</div><div class="h2" style="margin-bottom:6px">Wie soll ich mit dir reden?</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Du kannst das später jederzeit ändern.</p></div><div class="mt"><button class="mtb${S.mentor==='streng'?' on':''}" id="om-s"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--go)">${IC.i('lightning','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='streng'?'var(--ac)':'var(--tx)'}">Coach</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Direkt<br>Fordernd<br>Kein Blabla</div></button><button class="mtb${S.mentor==='sanft'?' on':''}" id="om-m"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--ac)">${IC.i('wave','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='sanft'?'var(--ac)':'var(--tx)'}">Mentor</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Warm<br>Ermutigend<br>Verständnisvoll</div></button></div><div style="background:var(--su);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--so);line-height:1.6;font-style:italic">${S.mentor==='streng'?`"${S.profile.name||'Hey'}, keine Ausreden. Dein System läuft. Führe es aus."`:'"Hey '+( S.profile.name||'du')+', ich sehe wie viel du dir vornimmst — das zeigt, wie ernst es dir ist. Was ist heute wirklich möglich?"'}</div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
-  if(s===5){const gs=S.monthGoals.length?S.monthGoals:[{g:'',p:0}];
-    return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 4 VON 4</div><div class="h2" style="margin-bottom:6px">Deine Monatsziele.</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Deine übernommenen Ziele — passe sie an oder füge eigene hinzu.</p></div>
+  if(s===5)return`<div class="ob"><div><div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 4 VON 5</div><div class="h2" style="margin-bottom:6px">Wie soll ich mit dir reden?</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Du kannst das später jederzeit ändern.</p></div><div class="mt"><button class="mtb${S.mentor==='streng'?' on':''}" id="om-s"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--go)">${IC.i('lightning','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='streng'?'var(--ac)':'var(--tx)'}">Coach</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Direkt<br>Fordernd<br>Kein Blabla</div></button><button class="mtb${S.mentor==='sanft'?' on':''}" id="om-m"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--ac)">${IC.i('wave','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='sanft'?'var(--ac)':'var(--tx)'}">Mentor</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Warm<br>Ermutigend<br>Verständnisvoll</div></button></div><div style="background:var(--su);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--so);line-height:1.6;font-style:italic">${S.mentor==='streng'?`"${S.profile.name||'Hey'}, keine Ausreden. Dein System läuft. Führe es aus."`:'"Hey '+( S.profile.name||'du')+', ich sehe wie viel du dir vornimmst — das zeigt, wie ernst es dir ist. Was ist heute wirklich möglich?"'}</div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
+  if(s===6){const gs=S.monthGoals.length?S.monthGoals:[{g:'',p:0}];
+    return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 5 VON 5</div><div class="h2" style="margin-bottom:6px">Deine Monatsziele.</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Deine übernommenen Ziele — passe sie an oder füge eigene hinzu.</p></div>
 ${gs.map((g,i)=>`<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center"><input class="inp ob-goal" data-gi="${i}" style="margin:0;flex:1" placeholder="z.B. 3× pro Woche Sport" value="${g.g}">${gs.length>1?`<button class="og-rm" data-gi="${i}" style="width:34px;height:38px;border-radius:9px;border:1px solid rgba(240,107,107,.2);background:rgba(240,107,107,.08);color:var(--rd);cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center">${IC.i('x','currentColor',2)}</button>`:''}</div>`).join('')}<button id="og-add" style="width:100%;padding:9px;border-radius:10px;border:1px dashed var(--bo);background:none;color:var(--ac);font-family:var(--fb);font-size:12px;font-weight:600;cursor:pointer;margin-top:2px">+ Weiteres Ziel</button></div><div>${dots}<button class="bt btg" id="obdone">Los geht's!</button></div></div>`;}
 }
 
@@ -1390,7 +1417,18 @@ function EV(){
   // Onboarding
   const obn=document.getElementById('obn');
   if(obn)obn.onclick=()=>{
-    if(S.ob===2){const nm=document.getElementById('oname')?.value.trim();if(!nm){document.getElementById('oname').focus();return;}S.profile.name=nm;S.profile.age=document.getElementById('oage')?.value||'';S.profile.goal=document.getElementById('ogoal')?.value.trim()||'';if(S.profile.goal)triggerGoalSug();}
+    if(S.ob===2){const nm=document.getElementById('oname')?.value.trim();if(!nm){document.getElementById('oname').focus();return;}S.profile.name=nm;S.profile.age=document.getElementById('oage')?.value||'';S.profile.goal=document.getElementById('ogoal')?.value.trim()||'';}
+    if(S.ob===3){
+      // Standortbestimmung speichern
+      S.profile.why=document.getElementById('owhy')?.value.trim()||'';
+      S.profile.start=document.getElementById('ostart')?.value.trim()||'';
+      S.profile.tried=document.getElementById('otried')?.value.trim()||'';
+      // sanfter Pflichthinweis: Warum + Start sollten ausgefüllt sein
+      if(!S.profile.why){document.getElementById('owhy')?.focus();return;}
+      if(!S.profile.start){document.getElementById('ostart')?.focus();return;}
+      // Jetzt mit vollem Kontext die KI-Analyse anstoßen
+      S.goalSug=null;S.goalSugFor='';if(S.profile.goal)triggerGoalSug();
+    }
     S.ob++;R();
   };
   // Analyse-Screen "Weiter" → zum Mentor-Schritt
@@ -1502,6 +1540,23 @@ function EV(){
   };
 
   // Demo-Daten laden
+  // Backup Export/Import
+  const eb=document.getElementById('export-backup');
+  if(eb)eb.onclick=()=>{
+    const st=document.getElementById('backup-status');
+    const ok=exportBackup();
+    if(st){st.textContent=ok?'Backup-Datei wurde heruntergeladen. Bewahre sie sicher auf.':'Export fehlgeschlagen.';st.style.color=ok?'var(--gr)':'var(--rd)';}
+  };
+  const impf=document.getElementById('import-file');
+  if(impf)impf.onchange=e=>{
+    const f=e.target.files&&e.target.files[0];if(!f)return;
+    const st=document.getElementById('backup-status');
+    if(st){st.textContent='Lese Backup...';st.style.color='var(--cy)';}
+    importBackup(f,(ok,msg)=>{
+      if(st){st.textContent=msg;st.style.color=ok?'var(--gr)':'var(--rd)';}
+      if(ok)setTimeout(()=>{S.sc='d';R();},1000);
+    });
+  };
   const ld=document.getElementById('load-demo');
   if(ld)ld.onclick=()=>{
     ld.disabled=true;ld.textContent='⏳ Lade Demo-Daten...';
@@ -1668,6 +1723,45 @@ function loadState(){
 
     return true;
   }catch(e){console.log('loadState:',e);return false;}
+}
+
+// Backup exportieren — lädt alle Daten als JSON-Datei herunter
+function exportBackup(){
+  try{
+    const s={};
+    PERSIST.forEach(k=>{s[k]=S[k];});
+    s._date=new Date().toDateString();
+    s._v='mfm_backup_1';
+    s._exported=new Date().toISOString();
+    const blob=new Blob([JSON.stringify(s,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const name=(S.profile.name||'mfm').toLowerCase().replace(/[^a-z0-9]/g,'');
+    a.href=url;a.download='MFM-Backup-'+name+'-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    return true;
+  }catch(e){console.log('export error:',e);return false;}
+}
+
+// Backup importieren — liest JSON-Datei und stellt Daten wieder her
+function importBackup(file,cb){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const s=JSON.parse(e.target.result);
+      if(!s||(!s.profile&&!s.history)){cb(false,'Keine gültige MFM-Backup-Datei.');return;}
+      PERSIST.forEach(k=>{if(s[k]!==undefined)S[k]=s[k];});
+      // notifs Migrations-Fix
+      if(S.notifs&&typeof S.notifs.morning==='boolean'){
+        S.notifs={morning:{on:S.notifs.morning,time:'08:00'},noon:{on:S.notifs.noon!==false,time:'13:00'},evening:{on:S.notifs.evening!==false,time:'23:15'}};
+      }
+      saveState();
+      cb(true,'Backup erfolgreich wiederhergestellt!');
+    }catch(err){cb(false,'Datei konnte nicht gelesen werden.');}
+  };
+  reader.onerror=()=>cb(false,'Fehler beim Lesen der Datei.');
+  reader.readAsText(file);
 }
 
 function clearAllData(){

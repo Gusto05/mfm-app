@@ -4,8 +4,8 @@
   "description": "Dein täglicher Coach. Dein System. Dein Wachstum.",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#07091A",
-  "theme_color": "#07091A",
+  "background_color": "#10141F",
+  "theme_color": "#10141F",
   "orientation": "portrait",
   "icons": [
     {
