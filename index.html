@@ -113,6 +113,14 @@ body{background:#0B0E14;display:flex;justify-content:center;align-items:flex-sta
 /* Tutorial highlight: element itself gets subtle pulse while canvas creates the dark surround */
 .tut-hi{animation:thi 1.8s ease-in-out infinite!important;border-radius:14px!important;position:relative!important}
 @keyframes thi{0%,100%{filter:brightness(1.0)}55%{filter:brightness(1.22)}}
+/* KI-Denk-Animation: atmende Puls-Welle (passt zum ruhigen Reflexions-Vibe) */
+.think{position:relative;width:84px;height:84px;margin:0 auto 22px}
+.think .core{position:absolute;inset:34px;border-radius:50%;background:radial-gradient(circle,var(--ac),var(--pu));box-shadow:0 0 24px var(--ac);animation:tcore 2.4s ease-in-out infinite}
+.think .ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--ac);opacity:0;animation:tring 2.4s ease-out infinite}
+.think .ring:nth-child(2){animation-delay:.8s}
+.think .ring:nth-child(3){animation-delay:1.6s}
+@keyframes tcore{0%,100%{transform:scale(.82);opacity:.85}50%{transform:scale(1.08);opacity:1}}
+@keyframes tring{0%{transform:scale(.4);opacity:.7}100%{transform:scale(1);opacity:0}}
 .tut-nb{background:rgba(107,124,255,.18)!important;border-radius:10px!important;outline:2px solid var(--ac)!important;outline-offset:3px!important;opacity:1!important}
 /* Tutorial interaction blocker — sits above content, below tutorial card */
 #tut-block{position:absolute;inset:0;z-index:8050;display:none;cursor:default;background:transparent}
@@ -287,6 +295,67 @@ const QUOTE_LIB={
 // Flache Liste für allgemeine Anzeige
 
 // Ziel-Archetypen — Hilfe für Nutzer ohne klare Vorstellung
+// KI-basierte Ziel-Analyse: geht konkret aufs individuelle Ziel ein,
+// fragt bei vagen Zielen nach, gibt fundierte (keine halluzinierten) Schritte
+async function fetchGoalSuggestions(goal){
+  const sys=`Du bist ein fundierter, ehrlicher Coach. Der Nutzer nennt sein Lebensziel. Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, kein Text drumherum, keine Markdown-Zäune.
+
+Schema:
+{"clear": true/false, "principle": "...", "steps": ["...","...","...","..."], "question": "..."}
+
+Vorgehen:
+- Greife IMMER die konkreten, fassbaren Bestandteile des Ziels auf und nenne sie beim Namen. Beispiele: "nach Zypern auswandern" → Aufenthalt/Visum, Wohnsitz, Sprache, ortsunabhängiges Einkommen. "vom Trading leben" → konsistente Strategie, Risikomanagement, Journaling, Startkapital. "reich werden durch Trading und auswandern" ist KONKRET genug (clear=true) — behandle es als zusammengesetztes Ziel und gib Schritte zu den fassbaren Teilen.
+- clear=true, wenn mindestens ein konkreter Weg erkennbar ist: "principle" = das nachgewiesene Grundprinzip für GENAU dieses Ziel (1-2 Sätze, ehrlich, ohne Garantien oder Reichtums-Versprechen). "steps" = 4 konkrete, täglich oder wöchentlich trackbare Handlungen, die wirklich in Richtung DIESES Ziels führen und die der Nutzer in einer Habit-App abhaken kann. "question"="".
+- clear=false NUR wenn das Ziel rein abstrakt ohne jeden fassbaren Anker ist (z.B. nur "glücklich sein", nur "erfolgreich"): dann "question" = EINE konkrete Rückfrage zum Schärfen, "principle" = kurzer Hinweis warum, "steps"=[].
+- Nenne keine erfundenen Zahlen, keine Versprechen wie "so wirst du reich". Bleib realistisch und beziehe dich wörtlich auf das, was der Nutzer geschrieben hat.
+- Deutsch, Du-Form.`;
+  const r=await ai([{role:'user',content:`Mein Ziel: ${goal}`}],sys,'claude-sonnet-4-6');
+  if(r===null)return null;
+  try{
+    const clean=r.replace(/```json|```/g,'').trim();
+    const obj=JSON.parse(clean);
+    if(typeof obj.clear==='boolean')return obj;
+    return null;
+  }catch(e){console.log('goalSug parse fail:',e);return null;}
+}
+
+// Startet KI-Ziel-Analyse (einmal pro Ziel), aktualisiert State + Re-Render
+async function triggerGoalSug(){
+  const goal=S.profile.goal;
+  if(!goal)return;
+  if(S.goalSugFor===goal&&S.goalSug)return; // schon geladen für dieses Ziel
+  S.goalSugLoading=true;S.goalSug=null;S.goalSugFor=goal;
+  if(S.sc==='ob')R();
+  const res=await fetchGoalSuggestions(goal);
+  S.goalSugLoading=false;
+  S.goalSug=res; // null → Fallback wird in rOb genutzt
+  if(S.sc==='ob')R();
+}
+
+// Lokale Ziel-Vorschlags-Engine — fundierte Prinzipien je nach Ziel
+function localGoalSuggestions(goal){
+  const g=(goal||'').toLowerCase();
+  // Jeder Block: Prinzip-Erklärung + konkrete umsetzbare Schritte
+  if(/abnehm|gewicht|schlank|diät|kalorie|fett/.test(g))
+    return{principle:'Abnehmen funktioniert über ein Kaloriendefizit — du nimmst ab, wenn du weniger Energie zu dir nimmst, als du verbrauchst. Sport hilft, ist aber nicht zwingend: Die Ernährung macht 80% aus.',steps:['Zucker-Getränke durch Wasser ersetzen','Eine Mahlzeit pro Tag bewusst kleiner','10.000 Schritte täglich','Kein Essen nach 20 Uhr']};
+  if(/muskel|aufbau|stärker|kräftig|masse/.test(g))
+    return{principle:'Muskelaufbau braucht drei Dinge: progressiven Trainingsreiz, genug Protein (ca. 1,6g/kg) und Erholung. Konsistenz über Monate schlägt jede perfekte Einzel-Einheit.',steps:['3× pro Woche Krafttraining','Genug Protein pro Mahlzeit','7-8 Stunden Schlaf','Trainingsgewichte notieren']};
+  if(/fit|ausdauer|kondition|lauf|joggen|sport/.test(g))
+    return{principle:'Fitness entsteht durch regelmäßige Bewegung — nicht durch Intensität, sondern durch Häufigkeit. Lieber 3× moderat als 1× extrem.',steps:['3× pro Woche 30 Min Bewegung','Treppe statt Aufzug','Nach dem Aufstehen 5 Min dehnen','Einen aktiven Hobby finden']};
+  if(/diszipl|konsequent|durchzieh|aufschieb|prokrast|fokus|produktiv/.test(g))
+    return{principle:'Disziplin ist kein Charakterzug, sondern ein System. Du wirst nicht diszipliniert durch Willenskraft, sondern durch kleine, wiederholbare Routinen und das Entfernen von Reibung.',steps:['Jeden Morgen Top-3-Aufgaben festlegen','Schwerste Aufgabe zuerst','Handy in anderen Raum beim Arbeiten','Abends Tag kurz reflektieren']};
+  if(/schlaf|müde|energie|früh aufstehen|aufstehen/.test(g))
+    return{principle:'Guter Schlaf entsteht durch Rhythmus, nicht durch Dauer allein. Feste Zeiten und eine ruhige letzte Stunde wirken stärker als Schlafmittel.',steps:['Jeden Tag zur selben Zeit ins Bett','Kein Bildschirm 30 Min vor dem Schlafen','Schlafzimmer kühl und dunkel','Morgens direkt Tageslicht']};
+  if(/stress|ruhig|gelassen|angst|mental|achtsam|meditat/.test(g))
+    return{principle:'Mentale Stärke wächst durch regelmäßige kleine Pausen und bewusste Reflexion — nicht durch Verdrängen. Schon wenige Minuten täglich verändern über Wochen viel.',steps:['Täglich 5 Min bewusst atmen','Eine Sache pro Tag aufschreiben, die gut war','Bildschirmzeit am Abend begrenzen','Einmal täglich kurz nach draußen']};
+  if(/geld|sparen|finanz|investier/.test(g))
+    return{principle:'Vermögen entsteht weniger durch mehr Einnahmen als durch konstante kleine Gewohnheiten: automatisch sparen, bevor man ausgibt, und Ausgaben sichtbar machen.',steps:['Feste Sparrate am Monatsanfang','Ausgaben eine Woche lang notieren','Ein Abo kündigen, das du nicht nutzt','Vor Käufen 24h warten']};
+  if(/projekt|lernen|studi|skill|fähigkeit|sprache|programmier/.test(g))
+    return{principle:'Können entsteht durch tägliche kleine Wiederholung, nicht durch seltene lange Sessions. 30 fokussierte Minuten täglich schlagen 5 Stunden am Wochenende.',steps:['Täglich 30 Min fokussiert dran','Kein Multitasking während der Session','Wöchentlich Fortschritt festhalten','Eine Ablenkungsquelle entfernen']};
+  // Fallback: allgemein
+  return{principle:'Echte Veränderung entsteht nicht durch große Sprünge, sondern durch kleine Handlungen, die du konsequent wiederholst. Beginne mit dem Kleinsten, das du sicher durchhältst.',steps:['Eine kleine tägliche Gewohnheit wählen','Jeden Tag kurz einchecken','Wöchentlich zurückblicken','Fortschritt sichtbar machen']};
+}
+
 const ARCHETYPES=[
   {ic:'run',t:'Fitter & gesünder',g:'Ich will fitter und gesünder werden — regelmäßig Sport, besser essen, mehr Energie im Alltag.',goals:['3× pro Woche Sport','Genug Wasser trinken täglich','Vor 23 Uhr schlafen']},
   {ic:'target',t:'Disziplinierter',g:'Ich will disziplinierter und konsequenter werden — Dinge durchziehen, die ich mir vornehme, statt aufzuschieben.',goals:['Tagesplan jeden Morgen','Eine Sache nicht aufschieben','Abendroutine einhalten']},
@@ -373,6 +442,7 @@ const S={
   referralCode:'MFM-'+(Math.random().toString(36).substr(2,6).toUpperCase()),
   taskTemplate:[],
   evStruct:{slq:0,en:0,dis:null,fail:null},
+  goalSug:null,goalSugLoading:false,goalSugFor:'',
 };
 
 function fmtDate(){const d=new Date();const D=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];const M=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];return`${D[d.getDay()]}, ${d.getDate()}. ${M[d.getMonth()]}`;}
@@ -422,25 +492,33 @@ function getWeeklyCard(){
 
 // Proxy-URL (Cloudflare Worker) — KI läuft hierüber, kein Key im Browser nötig
 const PROXY_URL='https://mfm-proxy.gustav-business.workers.dev';
+const APP_URL='https://gusto05.github.io/mfm-app/';
 const AI_MODEL='claude-haiku-4-5';
 let _lastAiError='';
 async function ai(msgs,sys,model){
-  try{
-    const r=await fetch(PROXY_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:model||AI_MODEL,max_tokens:600,system:sys,messages:msgs})
-    });
-    const raw=await r.text();
-    let d=null;try{d=JSON.parse(raw);}catch(e){}
-    if(!r.ok){_lastAiError=(d&&d.error&&d.error.message)?d.error.message:('HTTP '+r.status+': '+raw.slice(0,160));console.log('ai error:',_lastAiError);return null;}
-    _lastAiError='';
-    return (d&&d.content&&d.content[0]&&d.content[0].text)?d.content[0].text:null;
-  }catch(e){
-    _lastAiError='Netzwerk/CORS: '+e.message;
-    console.log('ai proxy error:',e);
-    return null;
-  }
+  const doFetch=async()=>{
+    try{
+      const fetchP=fetch(PROXY_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:model||AI_MODEL,max_tokens:600,system:sys,messages:msgs})
+      });
+      const timeoutP=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Zeitüberschreitung')),30000));
+      const r=await Promise.race([fetchP,timeoutP]);
+      const raw=await r.text();
+      let d=null;try{d=JSON.parse(raw);}catch(e){}
+      if(!r.ok){_lastAiError=(d&&d.error&&d.error.message)?d.error.message:('HTTP '+r.status+': '+raw.slice(0,160));return {ok:false};}
+      _lastAiError='';
+      return {ok:true,text:(d&&d.content&&d.content[0]&&d.content[0].text)?d.content[0].text:null};
+    }catch(e){_lastAiError='Netzwerk: '+e.message;return {ok:false};}
+  };
+  let res=await doFetch();
+  if(res.ok)return res.text;
+  await new Promise(r=>setTimeout(r,800));
+  res=await doFetch();
+  if(res.ok)return res.text;
+  console.log('ai error nach Retry:',_lastAiError);
+  return null;
 }
 
 function tl(tasks,pfx){return tasks.map((t,i)=>`<div class="ti"><div class="cb${t.ck?' ck':''}" data-i="${pfx}${i}">${t.ck?CHK:''}</div><span style="font-size:13px;color:${t.ck?'var(--mu)':'var(--tx)'};text-decoration:${t.ck?'line-through':''};line-height:1.55">${t.t}</span></div>`).join('');}
@@ -505,7 +583,7 @@ function rMid(){
   const ph=S.mp,n=S.profile.name||'du';
   if(ph==='intro')return`<button class="bk" id="bkmid">← Zurück</button><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:20px 0"><div style="font-size:60px;margin-bottom:16px">🌤️</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;letter-spacing:-.5px;margin-bottom:8px">Halbzeit${n!='du'?', '+n:''}!</div><p style="color:var(--so);font-size:13px;line-height:1.7;max-width:210px;margin-bottom:36px">3 kurze Fragen.<br>Wie läuft es wirklich?<br><span style="color:var(--tx)">1 Minute reicht.</span></p><button class="bt btc" id="mids" style="max-width:220px">Check-in starten →</button></div>`;
   if(ph==='q'){const qi=S.mq,pct=Math.round((qi/MQ.length)*100);return`<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:12px;color:var(--mu)">Frage ${qi+1} von ${MQ.length}</span><span style="font-size:12px;color:var(--cy);font-weight:700">${pct}%</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:var(--cy)"></div></div></div><div style="font-family:var(--fd);font-weight:700;font-size:17px;line-height:1.45;margin-bottom:16px">${MQ[qi]}</div><textarea class="ta" id="midta" placeholder="Deine Antwort...">${S.mc}</textarea><div style="margin-top:10px"><button class="bt btc" id="midnx"${S.mc.length<2?' disabled':''}>${qi===MQ.length-1?'Auswerten →':'Weiter →'}</button></div>`;}
-  if(ph==='loading')return`<div class="es" style="min-height:300px;justify-content:center"><div style="font-size:52px;margin-bottom:16px">☀️</div><div style="font-family:var(--fd);font-weight:700;font-size:20px">Kurz nachdenken...</div></div>`;
+  if(ph==='loading')return`<div class="es" style="min-height:300px;justify-content:center"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:19px;margin-bottom:8px">Dein Coach denkt nach</div><div style="font-size:13px;color:var(--mu)">Analysiere deinen Vormittag</div></div>`;
   return`<div class="lb" style="color:var(--cy)">MITTAG ERLEDIGT 🌤️</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;letter-spacing:-.5px;margin-bottom:14px">So läuft's${n!='du'?', '+n:''}.</div><div class="ca cl" style="margin-bottom:16px"><div class="lb" style="color:var(--cy)">KURZES FEEDBACK</div><p style="font-size:13px;color:var(--tx);line-height:1.78;margin:0">${S.mf}</p></div><button class="bt btg" id="middn">✓ Weiter geht's</button>`;
 }
 
@@ -526,7 +604,7 @@ ${un>0?`<div class="ca yl" style="margin-bottom:10px"><div class="lb" style="col
 <button class="bt btp" id="ev-struct-go"${(!st.slq||!st.en)?' disabled':''}>Weiter zu den Fragen →</button>
 <p style="font-size:11px;color:var(--mu);text-align:center">Diese Daten machen deine Muster-Analyse möglich.</p>`;}
   if(ph==='q'){const qi=S.eq,pct=Math.round((qi/EQ.length)*100);return`<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:12px;color:var(--mu)">Frage ${qi+1} von ${EQ.length}</span><span style="font-size:12px;color:var(--ac);font-weight:700">${pct}%</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:var(--ac)"></div></div></div><div style="font-family:var(--fd);font-weight:700;font-size:17px;line-height:1.45;margin-bottom:16px">${EQ[qi]}</div><textarea class="ta" id="eveta" placeholder="Deine Antwort...">${S.ec}</textarea><div style="margin-top:10px"><button class="bt btp" id="evenx"${S.ec.length<2?' disabled':''}>${qi===EQ.length-1?'Auswerten →':'Weiter →'}</button></div>`;}
-  if(ph==='loading')return`<div class="es" style="min-height:300px;justify-content:center"><div style="font-size:52px;margin-bottom:16px">🧠</div><div style="font-family:var(--fd);font-weight:700;font-size:20px">Analysiere deinen Tag...</div></div>`;
+  if(ph==='loading')return`<div class="es" style="min-height:300px;justify-content:center"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:19px;margin-bottom:8px">Dein Coach analysiert deinen Tag</div><div style="font-size:13px;color:var(--mu)">Erkenne Muster in deinen Antworten</div></div>`;
   return`<div class="lb" style="color:var(--gr)">TAG ABGESCHLOSSEN 🏁</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;letter-spacing:-.5px;margin-bottom:14px">Gut gemacht${n!='du'?', '+n:''}.</div><div class="stk" style="margin-bottom:12px"><div style="font-size:38px">🔥</div><div><div style="font-family:var(--fd);font-weight:800;font-size:32px;line-height:1;letter-spacing:-2px;color:var(--go)">${S.streak}</div><div style="font-size:12px;color:var(--so);margin-top:2px">Tage Streak!</div></div></div><div class="ca al" style="margin-bottom:16px"><div class="lb" style="color:var(--ac)">DEIN FEEDBACK HEUTE</div><p style="font-size:13px;color:var(--tx);line-height:1.78;margin:0">${S.ef}</p></div><button class="bt btg" id="evedn">✓ Zurück zum Dashboard</button>`;
 }
 
@@ -709,7 +787,7 @@ ${S.partner?`<div style="display:flex;align-items:center;gap:12px;padding:10px;b
 <!-- REFERRAL -->
 <div class="ca" style="background:linear-gradient(135deg,rgba(45,212,160,.06),rgba(107,124,255,.06));border-color:rgba(45,212,160,.25)"><div class="lb" style="color:var(--gr)">🎁 FREUNDE EINLADEN</div>
 <p style="font-size:12px;color:var(--so);line-height:1.55;margin-bottom:12px">Lade einen Freund ein — ihr beide bekommt <strong style="color:var(--tx)">1 Monat Premium kostenlos</strong>.</p>
-<div style="background:var(--su);border-radius:10px;border:1px solid var(--bo);padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="flex:1"><div style="font-size:11px;color:var(--mu);margin-bottom:3px;font-weight:600">DEIN PERSÖNLICHER LINK</div><div style="font-size:12px;color:var(--ac);font-family:var(--fb)">mfm.app/join/${ref}</div></div><button id="ref-copy" style="background:var(--ac);border:none;border-radius:8px;color:#fff;font-size:11px;padding:6px 12px;cursor:pointer;font-family:var(--fb);font-weight:600;white-space:nowrap">Kopieren</button></div>
+<div style="background:var(--su);border-radius:10px;border:1px solid var(--bo);padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="flex:1"><div style="font-size:11px;color:var(--mu);margin-bottom:3px;font-weight:600">DEIN PERSÖNLICHER LINK</div><div style="font-size:12px;color:var(--ac);font-family:var(--fb);word-break:break-all">${APP_URL}</div></div><button id="ref-copy" style="background:var(--ac);border:none;border-radius:8px;color:#fff;font-size:11px;padding:6px 12px;cursor:pointer;font-family:var(--fb);font-weight:600;white-space:nowrap">Teilen</button></div>
 ${S.referralCount>0?`<div style="background:rgba(45,212,160,.08);border-radius:9px;padding:8px 12px;font-size:12px;color:var(--gr)">✓ ${S.referralCount} Freund${S.referralCount>1?'e':''} eingeladen · ${S.referralCount} Monat${S.referralCount>1?'e':''} gratis verdient</div>`:`<p style="font-size:11px;color:var(--mu)">Noch keine Einladungen. Teile deinen Link und hol dir deine ersten Gratis-Monate.</p>`}
 </div>
 <!-- ACHIEVEMENTS -->
@@ -766,7 +844,7 @@ async function openWeekly(){
       <button id="wk-close" style="background:var(--su);border:1px solid var(--bo);border-radius:50%;width:32px;height:32px;color:var(--mu);font-size:16px;cursor:pointer;font-family:var(--fb)">×</button>
     </div>
     <div id="wk-body">
-      <div class="ca" style="text-align:center;padding:18px"><div style="width:30px;height:30px;margin:0 auto 10px;color:var(--ac);animation:cbp 1s ease infinite">${IC.i('sparkle','#6B7CFF',2)}</div><div style="font-size:13px;color:var(--mu)">Dein Coach analysiert deine Woche...</div></div>
+      <div class="ca" style="text-align:center;padding:28px"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-size:13px;color:var(--mu)">Dein Coach analysiert deine Woche</div></div>
     </div>`;
   ov.classList.add('open');
   document.getElementById('wk-close').onclick=()=>ov.classList.remove('open');
@@ -1096,12 +1174,33 @@ function confetti(){
 // ── ONBOARDING
 function rOb(){
   const s=S.ob;
-  const dots=`<div style="display:flex;justify-content:center;gap:7px;margin-bottom:18px">${[1,2,3,4].map(i=>`<div class="dot${s===i?' on':''}"></div>`).join('')}</div>`;
+  const dots=`<div style="display:flex;justify-content:center;gap:7px;margin-bottom:18px">${[1,2,3,4,5].map(i=>`<div class="dot${s===i?' on':''}"></div>`).join('')}</div>`;
   if(s===1)return`<div class="ob"><div></div><div style="text-align:center;padding:0 10px"><div style="width:72px;height:72px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;border-radius:22px;background:linear-gradient(135deg,var(--ac),var(--pu))"><span style="width:38px;height:38px;display:inline-flex;color:#fff">${IC.i('sparkle','#fff',1.8)}</span></div><div style="font-family:var(--fd);font-weight:800;font-size:32px;letter-spacing:-.5px;line-height:1.2;margin-bottom:12px">My Future Me</div><p style="color:var(--so);font-size:14px;line-height:1.75;max-width:230px;margin:0 auto">Dein täglicher Coach.<br>Dein System. Dein Wachstum.</p></div><div>${dots}<button class="bt btp" id="obn">Starten →</button><p style="text-align:center;font-size:11px;color:var(--mu);margin-top:4px">Kostenlos · Premium verfügbar</p></div></div>`;
-  if(s===2)return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 1 VON 3</div><div class="h2" style="margin-bottom:6px">Wer bist du?</div></div><div style="margin-bottom:8px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">DEIN NAME *</div><input class="inp" id="oname" placeholder="z.B. Max" value="${S.profile.name}"></div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">ALTER</div><input class="inp" id="oage" type="number" placeholder="21" value="${S.profile.age}" style="max-width:100px"></div><div><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">WIE WILLST DU WERDEN? *</div><textarea class="ta" id="ogoal" style="min-height:78px" placeholder="Beschreibe die Person, die du werden willst...">${S.profile.goal}</textarea></div>
+  if(s===2)return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 1 VON 4</div><div class="h2" style="margin-bottom:6px">Wer bist du?</div></div><div style="margin-bottom:8px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">DEIN NAME *</div><input class="inp" id="oname" placeholder="z.B. Max" value="${S.profile.name}"></div><div style="margin-bottom:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">ALTER</div><input class="inp" id="oage" type="number" placeholder="21" value="${S.profile.age}" style="max-width:100px"></div><div><div style="font-size:11px;color:var(--mu);margin-bottom:4px;font-weight:600">WIE WILLST DU WERDEN? *</div><textarea class="ta" id="ogoal" style="min-height:78px" placeholder="Beschreibe die Person, die du werden willst...">${S.profile.goal}</textarea></div>
 <div style="margin-top:10px"><div style="font-size:11px;color:var(--mu);margin-bottom:7px;font-weight:600">NOCH UNSICHER? WÄHLE EINEN STARTPUNKT:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${ARCHETYPES.map((a,i)=>`<button class="arch-btn" data-arch="${i}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border-radius:11px;border:1px solid var(--bo);background:var(--su);color:var(--so);font-size:12px;font-family:var(--fb);cursor:pointer"><span style="width:15px;height:15px;display:inline-flex;color:var(--ac)">${IC.i(a.ic,'currentColor',1.8)}</span>${a.t}</button>`).join('')}</div><p style="font-size:10px;color:var(--mu);margin-top:8px;line-height:1.5">Tipp: Wähle einen Bereich — wir füllen Ziel & Vorschläge aus. Du kannst alles danach anpassen.</p></div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
-  if(s===3)return`<div class="ob"><div><div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 2 VON 3</div><div class="h2" style="margin-bottom:6px">Wie soll ich mit dir reden?</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Du kannst das später jederzeit ändern.</p></div><div class="mt"><button class="mtb${S.mentor==='streng'?' on':''}" id="om-s"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--go)">${IC.i('lightning','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='streng'?'var(--ac)':'var(--tx)'}">Coach</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Direkt<br>Fordernd<br>Kein Blabla</div></button><button class="mtb${S.mentor==='sanft'?' on':''}" id="om-m"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--ac)">${IC.i('wave','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='sanft'?'var(--ac)':'var(--tx)'}">Mentor</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Warm<br>Ermutigend<br>Verständnisvoll</div></button></div><div style="background:var(--su);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--so);line-height:1.6;font-style:italic">${S.mentor==='streng'?`"${S.profile.name||'Hey'}, keine Ausreden. Dein System läuft. Führe es aus."`:'"Hey '+( S.profile.name||'du')+', ich sehe wie viel du dir vornimmst — das zeigt, wie ernst es dir ist. Was ist heute wirklich möglich?"'}</div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
-  if(s===4){const gs=S.monthGoals.length?S.monthGoals:[{g:'',p:0}];return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 3</div><div class="h2" style="margin-bottom:6px">Deine Monatsziele.</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Konkret und messbar. Füge so viele hinzu wie du willst.</p></div>${gs.map((g,i)=>`<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center"><input class="inp ob-goal" data-gi="${i}" style="margin:0;flex:1" placeholder="z.B. 3× pro Woche Sport" value="${g.g}">${gs.length>1?`<button class="og-rm" data-gi="${i}" style="width:34px;height:38px;border-radius:9px;border:1px solid rgba(240,107,107,.2);background:rgba(240,107,107,.08);color:var(--rd);cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center">${IC.i('x','currentColor',2)}</button>`:''}</div>`).join('')}<button id="og-add" style="width:100%;padding:9px;border-radius:10px;border:1px dashed var(--bo);background:none;color:var(--ac);font-family:var(--fb);font-size:12px;font-weight:600;cursor:pointer;margin-top:2px">+ Weiteres Ziel</button></div><div>${dots}<button class="bt btg" id="obdone">Los geht's!</button></div></div>`;}
+  if(s===3){
+    const aiS=S.goalSug;const loc=localGoalSuggestions(S.profile.goal);
+    let inner='';
+    if(S.goalSugLoading){
+      inner=`<div class="es" style="min-height:240px;justify-content:center"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:18px;margin-bottom:6px">Ich analysiere dein Ziel</div><div style="font-size:13px;color:var(--mu);max-width:240px;line-height:1.6">"${S.profile.goal}"</div></div>`;
+    } else if(aiS&&aiS.clear===false&&aiS.question){
+      inner=`<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 2 VON 4</div><div class="h2" style="margin-bottom:6px">Lass uns das schärfen</div></div>
+<div class="insight" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><span style="width:18px;height:18px;display:inline-flex;color:var(--go)">${IC.i('brain','currentColor',2)}</span><span class="lb" style="margin-bottom:0;color:var(--go)">DEIN COACH FRAGT</span></div><p style="font-size:13px;color:var(--tx);line-height:1.7;margin:0 0 12px">${aiS.question}</p><textarea class="ta" id="goal-refine" style="min-height:64px;margin-bottom:10px" placeholder="Deine Antwort…"></textarea><button class="bt btc" id="goal-refine-go" style="margin:0">Ziel schärfen →</button></div>
+<button id="skip-refine" style="width:100%;padding:9px;background:none;border:none;color:var(--mu);font-family:var(--fb);font-size:12px;cursor:pointer">Überspringen</button>`;
+    } else {
+      const sug=(aiS&&aiS.clear)?aiS:loc;
+      const chosen=S.monthGoals.filter(g=>g.g).map(g=>g.g);
+      inner=`<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 2 VON 4</div><div class="h2" style="margin-bottom:6px">Dein Weg zum Ziel</div><p style="font-size:12px;color:var(--mu);line-height:1.6;max-width:260px;margin:0 auto">Basierend auf deinem Ziel — tippe an, was du übernehmen willst.</p></div>
+<div class="insight" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><span style="width:18px;height:18px;display:inline-flex;color:var(--ac)">${IC.i('sparkle','currentColor',2)}</span><span class="lb" style="margin-bottom:0;color:var(--ac)">DAS PRINZIP</span></div><p style="font-size:13px;color:var(--tx);line-height:1.72;margin:0">${sug.principle}</p></div>
+${sug.steps&&sug.steps.length?`<div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:8px">VORSCHLÄGE — TIPPEN ZUM ÜBERNEHMEN:</div><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:6px">${sug.steps.map(st=>{const on=chosen.includes(st);return `<button class="sug-chip" data-sug="${(''+st).replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;border:1px solid ${on?'var(--gr)':'var(--bo)'};background:${on?'rgba(61,214,140,.1)':'var(--su)'};color:${on?'var(--gr)':'var(--so)'};font-size:13px;font-family:var(--fb);cursor:pointer;text-align:left;font-weight:${on?'600':'400'}"><span style="width:18px;height:18px;display:inline-flex;flex-shrink:0;color:${on?'var(--gr)':'var(--mu)'}">${IC.i(on?'check':'arrowRight','currentColor',2)}</span>${st}</button>`;}).join('')}</div><p style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:4px">${chosen.length>0?chosen.length+' übernommen':'Du kannst auch ohne Auswahl weiter'}</p>`:''}`;
+    }
+    const showNext=!S.goalSugLoading&&!(aiS&&aiS.clear===false&&aiS.question);
+    return`<div class="ob"><div>${inner}</div><div>${dots}${showNext?`<button class="bt btp" id="obn3">Weiter →</button>`:''}</div></div>`;
+  }
+  if(s===4)return`<div class="ob"><div><div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 4</div><div class="h2" style="margin-bottom:6px">Wie soll ich mit dir reden?</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Du kannst das später jederzeit ändern.</p></div><div class="mt"><button class="mtb${S.mentor==='streng'?' on':''}" id="om-s"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--go)">${IC.i('lightning','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='streng'?'var(--ac)':'var(--tx)'}">Coach</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Direkt<br>Fordernd<br>Kein Blabla</div></button><button class="mtb${S.mentor==='sanft'?' on':''}" id="om-m"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--ac)">${IC.i('wave','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='sanft'?'var(--ac)':'var(--tx)'}">Mentor</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Warm<br>Ermutigend<br>Verständnisvoll</div></button></div><div style="background:var(--su);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--so);line-height:1.6;font-style:italic">${S.mentor==='streng'?`"${S.profile.name||'Hey'}, keine Ausreden. Dein System läuft. Führe es aus."`:'"Hey '+( S.profile.name||'du')+', ich sehe wie viel du dir vornimmst — das zeigt, wie ernst es dir ist. Was ist heute wirklich möglich?"'}</div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
+  if(s===5){const gs=S.monthGoals.length?S.monthGoals:[{g:'',p:0}];
+    return`<div class="ob"><div><div style="text-align:center;margin-bottom:18px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 4 VON 4</div><div class="h2" style="margin-bottom:6px">Deine Monatsziele.</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Deine übernommenen Ziele — passe sie an oder füge eigene hinzu.</p></div>
+${gs.map((g,i)=>`<div style="margin-bottom:8px;display:flex;gap:6px;align-items:center"><input class="inp ob-goal" data-gi="${i}" style="margin:0;flex:1" placeholder="z.B. 3× pro Woche Sport" value="${g.g}">${gs.length>1?`<button class="og-rm" data-gi="${i}" style="width:34px;height:38px;border-radius:9px;border:1px solid rgba(240,107,107,.2);background:rgba(240,107,107,.08);color:var(--rd);cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center">${IC.i('x','currentColor',2)}</button>`:''}</div>`).join('')}<button id="og-add" style="width:100%;padding:9px;border-radius:10px;border:1px dashed var(--bo);background:none;color:var(--ac);font-family:var(--fb);font-size:12px;font-weight:600;cursor:pointer;margin-top:2px">+ Weiteres Ziel</button></div><div>${dots}<button class="bt btg" id="obdone">Los geht's!</button></div></div>`;}
 }
 
 // ── LOKALE ENGINES (0 € API-Kosten) ─────────────────────
@@ -1291,23 +1390,56 @@ function EV(){
   // Onboarding
   const obn=document.getElementById('obn');
   if(obn)obn.onclick=()=>{
-    if(S.ob===2){const nm=document.getElementById('oname')?.value.trim();if(!nm){document.getElementById('oname').focus();return;}S.profile.name=nm;S.profile.age=document.getElementById('oage')?.value||'';S.profile.goal=document.getElementById('ogoal')?.value.trim()||'';}
+    if(S.ob===2){const nm=document.getElementById('oname')?.value.trim();if(!nm){document.getElementById('oname').focus();return;}S.profile.name=nm;S.profile.age=document.getElementById('oage')?.value||'';S.profile.goal=document.getElementById('ogoal')?.value.trim()||'';if(S.profile.goal)triggerGoalSug();}
     S.ob++;R();
   };
+  // Analyse-Screen "Weiter" → zum Mentor-Schritt
+  const obn3=document.getElementById('obn3');
+  if(obn3)obn3.onclick=()=>{
+    // gewählte Vorschläge sind bereits in monthGoals; weiter
+    S.ob++;R();
+  };
+  // Rückfrage überspringen → trotzdem weiter mit lokalem Fallback
+  const skipR=document.getElementById('skip-refine');
+  if(skipR)skipR.onclick=()=>{S.goalSug={clear:true,principle:localGoalSuggestions(S.profile.goal).principle,steps:localGoalSuggestions(S.profile.goal).steps,question:''};R();};
   // Archetyp wählen → füllt Ziel + Monatsziele vor
   document.querySelectorAll('[data-arch]').forEach(b=>{b.onclick=()=>{
     const a=ARCHETYPES[parseInt(b.dataset.arch)];
     S.profile.goal=a.g;
     S.monthGoals=a.goals.map(g=>({g,p:0}));
-    // Name/Alter erhalten
     const nm=document.getElementById('oname')?.value.trim();if(nm)S.profile.name=nm;
     const ag=document.getElementById('oage')?.value;if(ag)S.profile.age=ag;
+    S.goalSug=null;S.goalSugFor='';triggerGoalSug();
     R();
   };});
   const oms=document.getElementById('om-s');if(oms)oms.onclick=()=>{S.mentor='streng';R();};
   const omm=document.getElementById('om-m');if(omm)omm.onclick=()=>{S.mentor='sanft';R();};
   // Dynamische Ziel-Inputs (live speichern)
   document.querySelectorAll('.ob-goal').forEach(inp=>{inp.oninput=e=>{const i=parseInt(inp.dataset.gi);if(S.monthGoals[i])S.monthGoals[i].g=e.target.value;};});
+  // Vages Ziel schärfen → erneute KI-Analyse mit Zusatzinfo
+  const grg=document.getElementById('goal-refine-go');
+  if(grg)grg.onclick=()=>{
+    const extra=document.getElementById('goal-refine')?.value.trim();
+    if(!extra)return;
+    S.profile.goal=S.profile.goal+' — '+extra;
+    S.goalSug=null;S.goalSugFor='';
+    triggerGoalSug();
+  };
+  // Ziel-Vorschläge antippen → toggle in monthGoals (Analyse-Screen + Ziel-Screen)
+  document.querySelectorAll('.sug-chip').forEach(b=>{b.onclick=()=>{
+    // aktuelle Eingaben sichern (falls Ziel-Screen)
+    document.querySelectorAll('.ob-goal').forEach(inp=>{const i=parseInt(inp.dataset.gi);if(S.monthGoals[i])S.monthGoals[i].g=inp.value;});
+    const sug=b.dataset.sug;
+    const idx=S.monthGoals.findIndex(g=>g.g===sug);
+    if(idx>=0){S.monthGoals.splice(idx,1);} // schon drin → entfernen
+    else{
+      const empty=S.monthGoals.findIndex(g=>!g.g);
+      if(empty>=0)S.monthGoals[empty].g=sug;
+      else S.monthGoals.push({g:sug,p:0});
+    }
+    if(S.monthGoals.length===0)S.monthGoals=[{g:'',p:0}];
+    R();
+  };});
   const oadd=document.getElementById('og-add');
   if(oadd)oadd.onclick=()=>{
     // aktuelle Werte sichern
@@ -1438,10 +1570,16 @@ function EV(){
   };
   // Referral copy
   const rcb=document.getElementById('ref-copy');
-  if(rcb)rcb.onclick=()=>{navigator.clipboard?.writeText('mfm.app/join/'+S.referralCode).catch(()=>{});rcb.textContent='Kopiert ✓';rcb.style.background='var(--gr)';setTimeout(()=>{rcb.textContent='Kopieren';rcb.style.background='var(--ac)';},2000);};
+  if(rcb)rcb.onclick=async()=>{const msg='Probier My Future Me aus — mein täglicher Coach: '+APP_URL;
+    if(navigator.share){try{await navigator.share({title:'My Future Me',text:msg});return;}catch(e){if(e.name==='AbortError')return;}}
+    try{await navigator.clipboard.writeText(APP_URL);rcb.textContent='Kopiert ✓';rcb.style.background='var(--gr)';}catch(e){rcb.textContent='Fehler';}
+    setTimeout(()=>{rcb.textContent='Teilen';rcb.style.background='var(--ac)';},2000);};
   // Scorecard share
   const scs=document.getElementById('sc-share');
-  if(scs)scs.onclick=()=>{const lv2=getLevel();const t=`Meine Woche mit MFM 🚀\n🔥 ${S.streak} Tage Streak\n${lv2.ic} Level: ${lv2.l}\n📊 ${S.history.length} Check-ins\n\nmfm.app/join/${S.referralCode}`;navigator.clipboard?.writeText(t).catch(()=>{});scs.textContent='Kopiert ✓';setTimeout(()=>scs.textContent='Teilen ↑',2000);};
+  if(scs)scs.onclick=async()=>{const lv2=getLevel();const t=`Meine Woche mit MFM\n🔥 ${S.streak} Tage Streak\n${lv2.ic} Level: ${lv2.l}\n📊 ${S.history.length} Check-ins\n\nMach mit: ${APP_URL}`;
+    if(navigator.share){try{await navigator.share({title:'My Future Me',text:t});return;}catch(e){if(e.name==='AbortError')return;}}
+    try{await navigator.clipboard.writeText(t);scs.textContent='Kopiert ✓';}catch(e){scs.textContent='Teilen';}
+    setTimeout(()=>scs.textContent='Teilen ↑',2000);};
   // Partner connect/remove
   const apb=document.getElementById('add-partner');
   if(apb)apb.onclick=()=>{const c=document.getElementById('pcode')?.value.trim();if(!c)return;S.partner={name:'Lisa M.',score:8,streak:12};const a=S.ach.find(a=>a.id==='ref1');if(a)a.e=true;R(true);};
