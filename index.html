@@ -356,23 +356,29 @@ async function triggerGoalSug(){
 // Lokale Ziel-Vorschlags-Engine — fundierte Prinzipien je nach Ziel
 function localGoalSuggestions(goal){
   const g=(goal||'').toLowerCase();
-  // Jeder Block: Prinzip-Erklärung + konkrete umsetzbare Schritte
-  if(/abnehm|gewicht|schlank|diät|kalorie|fett/.test(g))
-    return{principle:'Abnehmen funktioniert über ein Kaloriendefizit — du nimmst ab, wenn du weniger Energie zu dir nimmst, als du verbrauchst. Sport hilft, ist aber nicht zwingend: Die Ernährung macht 80% aus.',steps:['Zucker-Getränke durch Wasser ersetzen','Eine Mahlzeit pro Tag bewusst kleiner','10.000 Schritte täglich','Kein Essen nach 20 Uhr']};
-  if(/muskel|aufbau|stärker|kräftig|masse/.test(g))
-    return{principle:'Muskelaufbau braucht drei Dinge: progressiven Trainingsreiz, genug Protein (ca. 1,6g/kg) und Erholung. Konsistenz über Monate schlägt jede perfekte Einzel-Einheit.',steps:['3× pro Woche Krafttraining','Genug Protein pro Mahlzeit','7-8 Stunden Schlaf','Trainingsgewichte notieren']};
-  if(/fit|ausdauer|kondition|lauf|joggen|sport/.test(g))
-    return{principle:'Fitness entsteht durch regelmäßige Bewegung — nicht durch Intensität, sondern durch Häufigkeit. Lieber 3× moderat als 1× extrem.',steps:['3× pro Woche 30 Min Bewegung','Treppe statt Aufzug','Nach dem Aufstehen 5 Min dehnen','Einen aktiven Hobby finden']};
-  if(/diszipl|konsequent|durchzieh|aufschieb|prokrast|fokus|produktiv/.test(g))
-    return{principle:'Disziplin ist kein Charakterzug, sondern ein System. Du wirst nicht diszipliniert durch Willenskraft, sondern durch kleine, wiederholbare Routinen und das Entfernen von Reibung.',steps:['Jeden Morgen Top-3-Aufgaben festlegen','Schwerste Aufgabe zuerst','Handy in anderen Raum beim Arbeiten','Abends Tag kurz reflektieren']};
-  if(/schlaf|müde|energie|früh aufstehen|aufstehen/.test(g))
-    return{principle:'Guter Schlaf entsteht durch Rhythmus, nicht durch Dauer allein. Feste Zeiten und eine ruhige letzte Stunde wirken stärker als Schlafmittel.',steps:['Jeden Tag zur selben Zeit ins Bett','Kein Bildschirm 30 Min vor dem Schlafen','Schlafzimmer kühl und dunkel','Morgens direkt Tageslicht']};
-  if(/stress|ruhig|gelassen|angst|mental|achtsam|meditat/.test(g))
-    return{principle:'Mentale Stärke wächst durch regelmäßige kleine Pausen und bewusste Reflexion — nicht durch Verdrängen. Schon wenige Minuten täglich verändern über Wochen viel.',steps:['Täglich 5 Min bewusst atmen','Eine Sache pro Tag aufschreiben, die gut war','Bildschirmzeit am Abend begrenzen','Einmal täglich kurz nach draußen']};
-  if(/geld|sparen|finanz|investier/.test(g))
-    return{principle:'Vermögen entsteht weniger durch mehr Einnahmen als durch konstante kleine Gewohnheiten: automatisch sparen, bevor man ausgibt, und Ausgaben sichtbar machen.',steps:['Feste Sparrate am Monatsanfang','Ausgaben eine Woche lang notieren','Ein Abo kündigen, das du nicht nutzt','Vor Käufen 24h warten']};
-  if(/projekt|lernen|studi|skill|fähigkeit|sprache|programmier/.test(g))
-    return{principle:'Können entsteht durch tägliche kleine Wiederholung, nicht durch seltene lange Sessions. 30 fokussierte Minuten täglich schlagen 5 Stunden am Wochenende.',steps:['Täglich 30 Min fokussiert dran','Kein Multitasking während der Session','Wöchentlich Fortschritt festhalten','Eine Ablenkungsquelle entfernen']};
+  // Themen-Definitionen: jedes mit Erkennungsmuster, einer Prinzip-Kurzform und passenden Schritten
+  const THEMES=[
+    {k:'trading',re:/trading|trade|topstep|payout|prop|forex|aktien|chart|algorithmus|algo/,short:'Beim Trading zählt Konsistenz und Risikomanagement, nicht der einzelne Gewinn-Trade',steps:['Jeden Trading-Tag das Risiko pro Trade festlegen','Jeden Trade im Journal festhalten','Regeln vor Markt-Open durchlesen','Wöchentlich die eigenen Trades auswerten']},
+    {k:'coden',re:/app|coden|code|programmier|entwickl|software|projekt bauen/,short:'Software entsteht durch tägliche kleine Fortschritte, nicht durch seltene lange Sessions',steps:['Täglich 30 Min am Projekt/Algorithmus','Jeden Tag eine kleine Funktion fertigstellen','Fortschritt kurz dokumentieren','Eine Ablenkung beim Coden entfernen']},
+    {k:'beziehung',re:/beziehung|partner|freundin|freund|liv|liebe|ehe|familie/,short:'Eine gute Beziehung wächst durch kleine, regelmäßige Aufmerksamkeit — nicht durch große Gesten',steps:['Täglich bewusst Zeit ohne Handy mit ihr','Eine Sache am Tag, die ihr Freude macht','Aktiv zuhören statt nur antworten','Wöchentlich etwas gemeinsam unternehmen']},
+    {k:'disziplin',re:/diszipl|konsequent|durchzieh|alles mache|vornimmt|aufschieb|prokrast|fokus|produktiv/,short:'Disziplin ist kein Charakterzug, sondern ein System aus kleinen, wiederholbaren Routinen',steps:['Jeden Morgen Top-3-Aufgaben festlegen','Schwerste Aufgabe zuerst erledigen','Abends den Tag kurz reflektieren','Handy weglegen bei wichtigen Aufgaben']},
+    {k:'sport',re:/abnehm|gewicht|muskel|fit|ausdauer|lauf|joggen|sport|gym|training/,short:'Körperliche Ziele erreichst du durch Häufigkeit und Konsistenz, nicht durch einzelne extreme Einheiten',steps:['3× pro Woche bewegen','Genug Protein und Wasser täglich','7-8 Stunden Schlaf','Fortschritt notieren']},
+    {k:'geld',re:/geld|sparen|finanz|investier|reich|vermögen|schulden/,short:'Vermögen entsteht durch konstante Gewohnheiten: sparen bevor man ausgibt und Ausgaben sichtbar machen',steps:['Feste Sparrate am Monatsanfang','Ausgaben wöchentlich prüfen','Vor größeren Käufen 24h warten','Einnahmequellen ausbauen']},
+    {k:'mental',re:/stress|ruhig|gelassen|angst|mental|achtsam|meditat|selbstvertrauen/,short:'Mentale Stärke wächst durch regelmäßige kleine Pausen und bewusste Reflexion',steps:['Täglich 5 Min bewusst atmen','Eine gute Sache pro Tag aufschreiben','Bildschirmzeit abends begrenzen','Einmal täglich raus an die Luft']},
+    {k:'schlaf',re:/schlaf|müde|energie|früh aufstehen|aufstehen|rhythmus/,short:'Guter Schlaf entsteht durch festen Rhythmus und eine ruhige letzte Stunde',steps:['Jeden Tag zur selben Zeit ins Bett','Kein Bildschirm 30 Min vor dem Schlafen','Morgens direkt Tageslicht','Schlafzimmer kühl und dunkel']},
+    {k:'lernen',re:/lernen|studi|skill|fähigkeit|sprache|weiterbild|buch/,short:'Können entsteht durch tägliche kleine Wiederholung statt seltener langer Sessions',steps:['Täglich 30 Min fokussiert lernen','Kein Multitasking dabei','Wöchentlich Fortschritt festhalten','Eine Ablenkungsquelle entfernen']},
+  ];
+  const hits=THEMES.filter(t=>t.re.test(g));
+  if(hits.length>=2){
+    // Mehrteiliges Ziel: pro erkanntem Bereich ein Schritt, Prinzip fasst die Bereiche zusammen
+    const names={trading:'Trading',coden:'deine App/Code',beziehung:'deine Beziehung',disziplin:'Disziplin',sport:'Fitness',geld:'Finanzen',mental:'mentale Stärke',schlaf:'Schlaf',lernen:'Lernen'};
+    const bereiche=hits.map(h=>names[h.k]).filter(Boolean);
+    const principle=`Du hast mehrere Ziele auf einmal: ${bereiche.join(', ')}. Der Schlüssel ist, NICHT alles gleichzeitig perfekt zu wollen, sondern für jeden Bereich eine kleine tägliche Gewohnheit zu verankern. Konsistenz in jedem einzelnen Bereich bringt dich über die Zeit ans Ziel — nicht der perfekte Einzeltag.`;
+    // je einen Schritt pro Bereich (bis zu 5)
+    const steps=hits.slice(0,5).map(h=>h.steps[0]);
+    return{principle,steps};
+  }
+  if(hits.length===1)return{principle:hits[0].short+'.',steps:hits[0].steps};
   // Fallback: allgemein
   return{principle:'Echte Veränderung entsteht nicht durch große Sprünge, sondern durch kleine Handlungen, die du konsequent wiederholst. Beginne mit dem Kleinsten, das du sicher durchhältst.',steps:['Eine kleine tägliche Gewohnheit wählen','Jeden Tag kurz einchecken','Wöchentlich zurückblicken','Fortschritt sichtbar machen']};
 }
