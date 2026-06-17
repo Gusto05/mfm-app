@@ -8,7 +8,8 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#07091A">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body,#mfm{font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1,'lnum' 1}
@@ -152,6 +153,7 @@ svg{display:block;width:100%;height:100%}
 .wr-action{background:var(--su);border:1px solid var(--bo);border-left:3px solid var(--gr);border-radius:11px;padding:11px 13px;margin-bottom:8px}
 /* empty state */
 .es{display:flex;flex-direction:column;align-items:center;text-align:center;padding:32px 20px}
+.loadwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:100%;height:100%;padding:20px}
 </style>
 </head>
 <body>
@@ -299,31 +301,42 @@ const QUOTE_LIB={
 // fragt bei vagen Zielen nach, gibt fundierte (keine halluzinierten) Schritte
 async function fetchGoalSuggestions(goal){
   const p=S.profile;
-  const ctx=`Ziel: ${goal}
-Warum dieses Ziel wichtig ist: ${p.why||'nicht angegeben'}
-Aktueller Startpunkt / wo der Nutzer gerade steht: ${p.start||'nicht angegeben'}
-Was schon versucht wurde: ${p.tried||'nicht angegeben'}
-Alter: ${p.age||'unbekannt'}`;
-  const sys=`Du bist ein fundierter, ehrlicher Coach. Du bekommst das Ziel eines Nutzers PLUS seinen aktuellen Startpunkt und sein Warum. Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, kein Text drumherum, keine Markdown-Zäune.
+  const ctx=`ZIEL (wörtlich): "${goal}"
+WARUM es dem Nutzer wichtig ist: ${p.why||'nicht angegeben'}
+AKTUELLER STAND / wo der Nutzer heute steht: ${p.start||'nicht angegeben'}
+SCHON VERSUCHT: ${p.tried||'nicht angegeben'}
+ALTER: ${p.age||'unbekannt'}`;
+  const sys=`Du bist ein präziser, ehrlicher Coach. Du bekommst das Ziel eines Nutzers, sein Warum und seinen aktuellen Stand. Deine Aufgabe: JEDES einzelne genannte Detail aufgreifen — nichts weglassen, nicht auf ein Thema reduzieren.
 
-Schema:
-{"clear": true/false, "principle": "...", "assessment": "...", "steps": ["...","...","...","..."], "question": "..."}
+Antworte AUSSCHLIESSLICH mit gültigem JSON, kein Text drumherum, keine Markdown-Zäune. Schema:
+{
+  "clear": true,
+  "assessment": "1-2 Sätze: ordne den AKTUELLEN STAND des Nutzers ein, beziehe dich WÖRTLICH auf das, was er über sein Jetzt geschrieben hat. Ehrlich aber ermutigend.",
+  "strands": [
+    {"title": "Kurzer Name dieses Ziel-Bestandteils", "principle": "1-2 Sätze fundiertes Prinzip speziell für diesen Bestandteil", "step": "EINE konkrete, in einer Habit-App täglich oder wöchentlich abhakbare Handlung dafür"}
+  ],
+  "question": ""
+}
 
-Vorgehen:
-- "assessment" = 1-2 Sätze, die den AKTUELLEN STAND des Nutzers einordnen, basierend auf seinem Startpunkt. Sei ehrlich aber ermutigend: Sag ob er näher dran ist als gedacht oder noch an den Basics arbeiten muss. Beziehe dich konkret auf das, was er über seinen Stand geschrieben hat.
-- Zerlege das Ziel in seine EINZELNEN BESTANDTEILE und gehe punktuell darauf ein (nicht nur aufs Gesamtziel). Beispiel "reich werden durch Trading und nach Zypern auswandern": behandle Trading-Skill, Kapitalaufbau UND Auswanderung als separate Stränge.
-- "principle" = das nachgewiesene Grundprinzip für DIESES Ziel, das auch das WARUM des Nutzers aufgreift (2-3 Sätze, ehrlich, ohne Garantien/Reichtums-Versprechen).
-- "steps" = 4 konkrete, täglich/wöchentlich abhakbare Handlungen, die GENAU zu seinem Startpunkt passen. Wer noch bei den Basics steht, bekommt Basis-Schritte; wer fortgeschritten ist, bekommt anspruchsvollere. Die Schritte sollen die einzelnen Ziel-Bestandteile abdecken.
-- clear=false NUR wenn das Ziel rein abstrakt ohne jeden Anker ist (nur "glücklich sein"): dann "question" stellen, andere Felder leer.
-- Keine erfundenen Zahlen, keine Versprechen. Realistisch, wörtlich auf den Nutzer bezogen.
-- Deutsch, Du-Form.`;
-  const r=await ai([{role:'user',content:ctx}],sys,'claude-sonnet-4-6');
+ZWINGENDE REGELN:
+- Lies das Ziel genau und zerlege es in ALLE darin genannten Bestandteile. Erstelle für JEDEN einen eigenen Eintrag in "strands". Wenn der Nutzer 4 Dinge nennt (z.B. zuverlässiger werden, Trading-Payouts erreichen, App weiterentwickeln, Trading-Algorithmus coden), dann MÜSSEN 4 strands existieren — einer pro genanntem Punkt. Fasse niemals mehrere Punkte zu einem zusammen und lasse keinen weg.
+- "assessment" muss den konkret beschriebenen Ist-Zustand spiegeln, nicht allgemein bleiben.
+- Jeder "step" ist konkret und abhakbar (z.B. "Trading-Journal nach jedem Trade ausfüllen", "30 Min am Algorithmus coden"), keine Floskeln.
+- Realistisch, keine erfundenen Zahlen, keine Erfolgsgarantien.
+- clear=false NUR wenn das Ziel komplett leer/abstrakt ist (nur "glücklich sein"). Dann "question" stellen, "strands":[].
+- Deutsch, Du-Form. Gib NUR das JSON zurück.`;
+  const r=await ai([{role:'user',content:ctx}],sys,'claude-sonnet-4-6',2000);
   if(r===null)return null;
   try{
     const clean=r.replace(/```json|```/g,'').trim();
     const obj=JSON.parse(clean);
-    if(typeof obj.clear==='boolean')return obj;
-    return null;
+    if(typeof obj.clear!=='boolean')return null;
+    // In das von der UI erwartete Format überführen (principle + steps[])
+    if(obj.strands&&obj.strands.length){
+      obj.principle=obj.strands.map(s=>`${s.title}: ${s.principle}`).join(' ');
+      obj.steps=obj.strands.map(s=>s.step).filter(Boolean);
+    }
+    return obj;
   }catch(e){console.log('goalSug parse fail:',e);return null;}
 }
 
@@ -503,15 +516,15 @@ const PROXY_URL='https://mfm-proxy.gustav-business.workers.dev';
 const APP_URL='https://gusto05.github.io/mfm-app/';
 const AI_MODEL='claude-haiku-4-5';
 let _lastAiError='';
-async function ai(msgs,sys,model){
+async function ai(msgs,sys,model,maxTok){
   const doFetch=async()=>{
     try{
       const fetchP=fetch(PROXY_URL,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:model||AI_MODEL,max_tokens:600,system:sys,messages:msgs})
+        body:JSON.stringify({model:model||AI_MODEL,max_tokens:maxTok||700,system:sys,messages:msgs})
       });
-      const timeoutP=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Zeitüberschreitung')),30000));
+      const timeoutP=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Zeitüberschreitung')),45000));
       const r=await Promise.race([fetchP,timeoutP]);
       const raw=await r.text();
       let d=null;try{d=JSON.parse(raw);}catch(e){}
@@ -591,7 +604,7 @@ function rMid(){
   const ph=S.mp,n=S.profile.name||'du';
   if(ph==='intro')return`<button class="bk" id="bkmid">← Zurück</button><div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:20px 0"><div style="font-size:60px;margin-bottom:16px">🌤️</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;letter-spacing:-.5px;margin-bottom:8px">Halbzeit${n!='du'?', '+n:''}!</div><p style="color:var(--so);font-size:13px;line-height:1.7;max-width:210px;margin-bottom:36px">3 kurze Fragen.<br>Wie läuft es wirklich?<br><span style="color:var(--tx)">1 Minute reicht.</span></p><button class="bt btc" id="mids" style="max-width:220px">Check-in starten →</button></div>`;
   if(ph==='q'){const qi=S.mq,pct=Math.round((qi/MQ.length)*100);return`<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:12px;color:var(--mu)">Frage ${qi+1} von ${MQ.length}</span><span style="font-size:12px;color:var(--cy);font-weight:700">${pct}%</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:var(--cy)"></div></div></div><div style="font-family:var(--fd);font-weight:700;font-size:17px;line-height:1.45;margin-bottom:16px">${MQ[qi]}</div><textarea class="ta" id="midta" placeholder="Deine Antwort...">${S.mc}</textarea><div style="margin-top:10px"><button class="bt btc" id="midnx"${S.mc.length<2?' disabled':''}>${qi===MQ.length-1?'Auswerten →':'Weiter →'}</button></div>`;}
-  if(ph==='loading')return`<div class="es" style="min-height:300px;justify-content:center"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:19px;margin-bottom:8px">Dein Coach denkt nach</div><div style="font-size:13px;color:var(--mu)">Analysiere deinen Vormittag</div></div>`;
+  if(ph==='loading')return`<div class="loadwrap"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:19px;margin-bottom:8px">Dein Coach denkt nach</div><div style="font-size:13px;color:var(--mu)">Analysiere deinen Vormittag</div></div>`;
   return`<div class="lb" style="color:var(--cy)">MITTAG ERLEDIGT 🌤️</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;letter-spacing:-.5px;margin-bottom:14px">So läuft's${n!='du'?', '+n:''}.</div><div class="ca cl" style="margin-bottom:16px"><div class="lb" style="color:var(--cy)">KURZES FEEDBACK</div><p style="font-size:13px;color:var(--tx);line-height:1.78;margin:0">${S.mf}</p></div><button class="bt btg" id="middn">✓ Weiter geht's</button>`;
 }
 
@@ -612,7 +625,7 @@ ${un>0?`<div class="ca yl" style="margin-bottom:10px"><div class="lb" style="col
 <button class="bt btp" id="ev-struct-go"${(!st.slq||!st.en)?' disabled':''}>Weiter zu den Fragen →</button>
 <p style="font-size:11px;color:var(--mu);text-align:center">Diese Daten machen deine Muster-Analyse möglich.</p>`;}
   if(ph==='q'){const qi=S.eq,pct=Math.round((qi/EQ.length)*100);return`<div style="margin-bottom:20px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:12px;color:var(--mu)">Frage ${qi+1} von ${EQ.length}</span><span style="font-size:12px;color:var(--ac);font-weight:700">${pct}%</span></div><div class="pb"><div class="pf" style="width:${pct}%;background:var(--ac)"></div></div></div><div style="font-family:var(--fd);font-weight:700;font-size:17px;line-height:1.45;margin-bottom:16px">${EQ[qi]}</div><textarea class="ta" id="eveta" placeholder="Deine Antwort...">${S.ec}</textarea><div style="margin-top:10px"><button class="bt btp" id="evenx"${S.ec.length<2?' disabled':''}>${qi===EQ.length-1?'Auswerten →':'Weiter →'}</button></div>`;}
-  if(ph==='loading')return`<div class="es" style="min-height:300px;justify-content:center"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:19px;margin-bottom:8px">Dein Coach analysiert deinen Tag</div><div style="font-size:13px;color:var(--mu)">Erkenne Muster in deinen Antworten</div></div>`;
+  if(ph==='loading')return`<div class="loadwrap"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:19px;margin-bottom:8px">Dein Coach analysiert deinen Tag</div><div style="font-size:13px;color:var(--mu)">Erkenne Muster in deinen Antworten</div></div>`;
   return`<div class="lb" style="color:var(--gr)">TAG ABGESCHLOSSEN 🏁</div><div style="font-family:var(--fd);font-weight:800;font-size:22px;letter-spacing:-.5px;margin-bottom:14px">Gut gemacht${n!='du'?', '+n:''}.</div><div class="stk" style="margin-bottom:12px"><div style="font-size:38px">🔥</div><div><div style="font-family:var(--fd);font-weight:800;font-size:32px;line-height:1;letter-spacing:-2px;color:var(--go)">${S.streak}</div><div style="font-size:12px;color:var(--so);margin-top:2px">Tage Streak!</div></div></div><div class="ca al" style="margin-bottom:16px"><div class="lb" style="color:var(--ac)">DEIN FEEDBACK HEUTE</div><p style="font-size:13px;color:var(--tx);line-height:1.78;margin:0">${S.ef}</p></div><button class="bt btg" id="evedn">✓ Zurück zum Dashboard</button>`;
 }
 
@@ -1175,15 +1188,15 @@ function doWave(){
 
 // ── CONFETTI
 function confetti(){
-  const mfm=document.getElementById('mfm');const rc=mfm.getBoundingClientRect();
+  const vw=window.innerWidth,vh=window.innerHeight;
   const cv=document.createElement('canvas');
-  cv.style.cssText=`position:fixed;top:${rc.top}px;left:${rc.left}px;width:${rc.width}px;height:${rc.height}px;pointer-events:none;z-index:9999;border-radius:22px`;
-  cv.width=rc.width;cv.height=rc.height;document.body.appendChild(cv);
+  cv.style.cssText=`position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9999`;
+  cv.width=vw;cv.height=vh;document.body.appendChild(cv);
   const ctx=cv.getContext('2d');
   const cols=['#6B7CFF','#2DD4A0','#F5A623','#B07AFF','#38C8F5','#FF6B75','#fff'];
-  const ps=Array.from({length:90},()=>({x:Math.random()*cv.width,y:-12,w:Math.random()*9+4,h:Math.random()*4+3,c:cols[Math.floor(Math.random()*cols.length)],vx:(Math.random()-.5)*2.8,vy:Math.random()*3.5+1.8,rot:Math.random()*360,rv:(Math.random()-.5)*6,op:1}));
+  const ps=Array.from({length:110},()=>({x:Math.random()*cv.width,y:-12,w:Math.random()*9+4,h:Math.random()*4+3,c:cols[Math.floor(Math.random()*cols.length)],vx:(Math.random()-.5)*2.8,vy:Math.random()*3.5+1.8,rot:Math.random()*360,rv:(Math.random()-.5)*6,op:1}));
   let f=0;
-  (function draw(){ctx.clearRect(0,0,cv.width,cv.height);ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.rot+=p.rv;if(f>65)p.op=Math.max(0,p.op-.016);ctx.save();ctx.globalAlpha=p.op;ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);ctx.fillStyle=p.c;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();});if(++f<140)requestAnimationFrame(draw);else cv.remove();})();
+  (function draw(){ctx.clearRect(0,0,cv.width,cv.height);ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.rot+=p.rv;if(f>75)p.op=Math.max(0,p.op-.016);ctx.save();ctx.globalAlpha=p.op;ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);ctx.fillStyle=p.c;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();});if(++f<150)requestAnimationFrame(draw);else cv.remove();})();
 }
 
 
@@ -1208,7 +1221,7 @@ function rOb(){
     const aiS=S.goalSug;const loc=localGoalSuggestions(S.profile.goal);
     let inner='';
     if(S.goalSugLoading){
-      inner=`<div class="es" style="min-height:240px;justify-content:center"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:18px;margin-bottom:6px">Ich analysiere dein Ziel</div><div style="font-size:13px;color:var(--mu);max-width:240px;line-height:1.6">"${S.profile.goal}"</div></div>`;
+      inner=`<div class="loadwrap"><div class="think"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core"></div></div><div style="font-family:var(--fd);font-weight:700;font-size:18px;margin-bottom:6px">Ich analysiere dein Ziel</div><div style="font-size:13px;color:var(--mu);max-width:240px;line-height:1.6">"${S.profile.goal}"</div></div>`;
     } else if(aiS&&aiS.clear===false&&aiS.question){
       inner=`<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 5</div><div class="h2" style="margin-bottom:6px">Lass uns das schärfen</div></div>
 <div class="insight" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><span style="width:18px;height:18px;display:inline-flex;color:var(--go)">${IC.i('brain','currentColor',2)}</span><span class="lb" style="margin-bottom:0;color:var(--go)">DEIN COACH FRAGT</span></div><p style="font-size:13px;color:var(--tx);line-height:1.7;margin:0 0 12px">${aiS.question}</p><textarea class="ta" id="goal-refine" style="min-height:64px;margin-bottom:10px" placeholder="Deine Antwort…"></textarea><button class="bt btc" id="goal-refine-go" style="margin:0">Ziel schärfen →</button></div>
@@ -1216,12 +1229,15 @@ function rOb(){
     } else {
       const sug=(aiS&&aiS.clear)?aiS:loc;
       const chosen=S.monthGoals.filter(g=>g.g).map(g=>g.g);
-      inner=`<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 5</div><div class="h2" style="margin-bottom:6px">Dein Weg zum Ziel</div><p style="font-size:12px;color:var(--mu);line-height:1.6;max-width:260px;margin:0 auto">Basierend auf deinem Ziel und wo du stehst — tippe an, was du übernehmen willst.</p></div>
-${(aiS&&aiS.assessment)?`<div class="ca cl" style="margin-bottom:10px"><div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span style="width:16px;height:16px;display:inline-flex;color:var(--cy)">${IC.i('target','currentColor',2)}</span><span class="lb" style="margin-bottom:0;color:var(--cy)">DEINE STANDORTBESTIMMUNG</span></div><p style="font-size:12.5px;color:var(--tx);line-height:1.7;margin:0">${aiS.assessment}</p></div>`:''}
+      const hasStrands=aiS&&aiS.strands&&aiS.strands.length;
+      inner=`<div style="text-align:center;margin-bottom:16px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 3 VON 5</div><div class="h2" style="margin-bottom:6px">Dein Weg zum Ziel</div><p style="font-size:12px;color:var(--mu);line-height:1.6;max-width:260px;margin:0 auto">Für jeden Teil deines Ziels — tippe an, was du übernehmen willst.</p></div>
+${(aiS&&aiS.assessment)?`<div class="ca cl" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span style="width:16px;height:16px;display:inline-flex;color:var(--cy)">${IC.i('target','currentColor',2)}</span><span class="lb" style="margin-bottom:0;color:var(--cy)">DEINE STANDORTBESTIMMUNG</span></div><p style="font-size:12.5px;color:var(--tx);line-height:1.7;margin:0">${aiS.assessment}</p></div>`:''}
+${hasStrands?`<div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:8px">DEIN ZIEL — AUFGESCHLÜSSELT:</div>${aiS.strands.map(str=>{const st=str.step;const on=chosen.includes(st);return `<div class="ca" style="margin-bottom:8px;padding:12px 13px"><div style="font-family:var(--fd);font-weight:700;font-size:13px;color:var(--ac);margin-bottom:4px">${str.title}</div><p style="font-size:12px;color:var(--so);line-height:1.6;margin:0 0 9px">${str.principle}</p><button class="sug-chip" data-sug="${(''+st).replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:9px;width:100%;padding:10px 12px;border-radius:10px;border:1px solid ${on?'var(--gr)':'var(--bo)'};background:${on?'rgba(61,214,140,.1)':'var(--su)'};color:${on?'var(--gr)':'var(--tx)'};font-size:12.5px;font-family:var(--fb);cursor:pointer;text-align:left;font-weight:${on?'600':'500'}"><span style="width:17px;height:17px;display:inline-flex;flex-shrink:0;color:${on?'var(--gr)':'var(--mu)'}">${IC.i(on?'check':'arrowRight','currentColor',2)}</span>${st}</button></div>`;}).join('')}<p style="font-size:11px;color:var(--mu);text-align:center;margin:8px 0 4px">${chosen.length>0?chosen.length+' übernommen':'Du kannst auch ohne Auswahl weiter'}</p>`:`
 <div class="insight" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><span style="width:18px;height:18px;display:inline-flex;color:var(--ac)">${IC.i('sparkle','currentColor',2)}</span><span class="lb" style="margin-bottom:0;color:var(--ac)">DAS PRINZIP</span></div><p style="font-size:13px;color:var(--tx);line-height:1.72;margin:0">${sug.principle}</p></div>
-${sug.steps&&sug.steps.length?`<div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:8px">VORSCHLÄGE — TIPPEN ZUM ÜBERNEHMEN:</div><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:6px">${sug.steps.map(st=>{const on=chosen.includes(st);return `<button class="sug-chip" data-sug="${(''+st).replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;border:1px solid ${on?'var(--gr)':'var(--bo)'};background:${on?'rgba(61,214,140,.1)':'var(--su)'};color:${on?'var(--gr)':'var(--so)'};font-size:13px;font-family:var(--fb);cursor:pointer;text-align:left;font-weight:${on?'600':'400'}"><span style="width:18px;height:18px;display:inline-flex;flex-shrink:0;color:${on?'var(--gr)':'var(--mu)'}">${IC.i(on?'check':'arrowRight','currentColor',2)}</span>${st}</button>`;}).join('')}</div><p style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:4px">${chosen.length>0?chosen.length+' übernommen':'Du kannst auch ohne Auswahl weiter'}</p>`:''}`;
+${sug.steps&&sug.steps.length?`<div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:8px">VORSCHLÄGE — TIPPEN ZUM ÜBERNEHMEN:</div><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:6px">${sug.steps.map(st=>{const on=chosen.includes(st);return `<button class="sug-chip" data-sug="${(''+st).replace(/"/g,'&quot;')}" style="display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;border:1px solid ${on?'var(--gr)':'var(--bo)'};background:${on?'rgba(61,214,140,.1)':'var(--su)'};color:${on?'var(--gr)':'var(--so)'};font-size:13px;font-family:var(--fb);cursor:pointer;text-align:left;font-weight:${on?'600':'400'}"><span style="width:18px;height:18px;display:inline-flex;flex-shrink:0;color:${on?'var(--gr)':'var(--mu)'}">${IC.i(on?'check':'arrowRight','currentColor',2)}</span>${st}</button>`;}).join('')}</div><p style="font-size:11px;color:var(--mu);text-align:center;margin-bottom:4px">${chosen.length>0?chosen.length+' übernommen':'Du kannst auch ohne Auswahl weiter'}</p>`:''}`}`;
     }
     const showNext=!S.goalSugLoading&&!(aiS&&aiS.clear===false&&aiS.question);
+    if(S.goalSugLoading)return`<div class="ob" style="justify-content:center">${inner}</div>`;
     return`<div class="ob"><div>${inner}</div><div>${dots}${showNext?`<button class="bt btp" id="obn3">Weiter →</button>`:''}</div></div>`;
   }
   if(s===5)return`<div class="ob"><div><div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;color:var(--mu);margin-bottom:6px;font-weight:600">SCHRITT 4 VON 5</div><div class="h2" style="margin-bottom:6px">Wie soll ich mit dir reden?</div><p style="font-size:12px;color:var(--mu);line-height:1.6">Du kannst das später jederzeit ändern.</p></div><div class="mt"><button class="mtb${S.mentor==='streng'?' on':''}" id="om-s"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--go)">${IC.i('lightning','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='streng'?'var(--ac)':'var(--tx)'}">Coach</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Direkt<br>Fordernd<br>Kein Blabla</div></button><button class="mtb${S.mentor==='sanft'?' on':''}" id="om-m"><div style="width:30px;height:30px;margin:0 auto 8px;color:var(--ac)">${IC.i('wave','currentColor',2)}</div><div style="font-size:14px;font-weight:700;color:${S.mentor==='sanft'?'var(--ac)':'var(--tx)'}">Mentor</div><div style="font-size:11px;color:var(--mu);margin-top:4px;line-height:1.45">Warm<br>Ermutigend<br>Verständnisvoll</div></button></div><div style="background:var(--su);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--so);line-height:1.6;font-style:italic">${S.mentor==='streng'?`"${S.profile.name||'Hey'}, keine Ausreden. Dein System läuft. Führe es aus."`:'"Hey '+( S.profile.name||'du')+', ich sehe wie viel du dir vornimmst — das zeigt, wie ernst es dir ist. Was ist heute wirklich möglich?"'}</div></div><div>${dots}<button class="bt btp" id="obn">Weiter →</button></div></div>`;
