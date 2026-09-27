@@ -370,7 +370,19 @@ const QUOTE_LIB={
 // Ziel-Archetypen — Hilfe für Nutzer ohne klare Vorstellung
 // KI-basierte Ziel-Analyse: geht konkret aufs individuelle Ziel ein,
 // fragt bei vagen Zielen nach, gibt fundierte (keine halluzinierten) Schritte
-async function fetchGoalSuggestions(goal){
+function parseJsonLoose(r){
+  if(!r)return null;
+  let t=String(r).replace(/```json|```/g,'');
+  const a=t.indexOf('{');if(a<0)return null;t=t.slice(a);
+  const b=t.lastIndexOf('}');
+  if(b>0){try{return JSON.parse(t.slice(0,b+1));}catch(e){}}
+  // Abgeschnitten → bis zum letzten vollständigen Objekt kürzen und sauber schließen
+  let i=t.lastIndexOf('}'),n=0;
+  while(i>0&&n<80){const cand=t.slice(0,i+1);for(const tail of [']}',']}}','}']){try{return JSON.parse(cand+tail);}catch(e){}}i=t.lastIndexOf('}',i-1);n++;}
+  return null;
+}
+let _goalErr='';
+async function fetchGoalSuggestions(goal,model){
   const p=S.profile;
   const ctx=`ZIEL (wörtlich): "${goal}"
 WARUM es dem Nutzer wichtig ist: ${p.why||'nicht angegeben'}
@@ -390,18 +402,26 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON, kein Text drumherum, keine Markdown
 }
 
 ZWINGENDE REGELN:
+- Schreibt der Nutzer eine LISTE (Zeilen, Striche, Checkboxen), ist JEDER Listenpunkt ein eigener Strand — bis zu 10. Nutze seine eigenen Begriffe (z.B. "Edge-Lab", "22:10 Uhr", "Setup").
 - Lies das Ziel genau und zerlege es in ALLE darin genannten Bestandteile. Erstelle für JEDEN einen eigenen Eintrag in "strands". Wenn der Nutzer 4 Dinge nennt (z.B. zuverlässiger werden, Trading-Payouts erreichen, App weiterentwickeln, Trading-Algorithmus coden), dann MÜSSEN 4 strands existieren — einer pro genanntem Punkt. Fasse niemals mehrere Punkte zu einem zusammen und lasse keinen weg.
 - "assessment" muss den konkret beschriebenen Ist-Zustand spiegeln, nicht allgemein bleiben.
 - Jeder "step" ist konkret und abhakbar (z.B. "Trading-Journal nach jedem Trade ausfüllen", "30 Min am Algorithmus coden"), keine Floskeln.
+- KURZ halten: title max 3 Wörter, principle max 20 Wörter, step max 12 Wörter, alts genau 2 mit je max 10 Wörtern, assessment max 35 Wörter.
+- Sensible Punkte (z.B. Konsum von Erotik-Inhalten) sachlich und ohne Wertung behandeln: konkrete Reibung/Ersatz-Handlung statt Moral.
 - Realistisch, keine erfundenen Zahlen, keine Erfolgsgarantien.
 - clear=false NUR wenn das Ziel komplett leer/abstrakt ist (nur "glücklich sein"). Dann "question" stellen, "strands":[].
 - Deutsch, Du-Form. Gib NUR das JSON zurück.`;
-  const r=await ai([{role:'user',content:ctx}],sys,'claude-sonnet-4-6',2000);
-  if(r===null)return null;
+  _goalErr='';
+  const r=await ai([{role:'user',content:ctx}],sys,model||'claude-sonnet-4-6',3500);
+  const obj=parseJsonLoose(r);
+  if(obj&&typeof obj.clear!=='boolean'&&obj.strands&&obj.strands.length)obj.clear=true;
+  if(!obj||typeof obj.clear!=='boolean'){
+    _goalErr=r===null?(_lastAiError||'nicht erreichbar'):'Antwort unvollständig';
+    // Zweiter Versuch mit dem schnelleren Modell
+    if(!model&&_lastAiError!=='Zeitüberschreitung')return fetchGoalSuggestions(goal,'claude-haiku-4-5');
+    return null;
+  }
   try{
-    const clean=r.replace(/```json|```/g,'').trim();
-    const obj=JSON.parse(clean);
-    if(typeof obj.clear!=='boolean')return null;
     // In das von der UI erwartete Format überführen (principle + steps[])
     if(obj.strands&&obj.strands.length){
       obj.principle=obj.strands.map(s=>`${s.title}: ${s.principle}`).join(' ');
@@ -429,16 +449,33 @@ function localGoalSuggestions(goal){
   const g=(goal||'').toLowerCase();
   // Themen-Definitionen: jedes mit Erkennungsmuster, einer Prinzip-Kurzform und passenden Schritten
   const THEMES=[
+    {k:'coden',re:/app\b|coden|code|programmier|entwickl|software|projekt|edge-lab|edge lab/,short:'Eigene Projekte wachsen durch tägliche kleine Fortschritte, nicht durch seltene Marathon-Sessions',steps:['30 Min an deinem Projekt arbeiten','Eine kleine Aufgabe im Projekt abschließen']},
+    {k:'pflege',re:/pflegt|pflege|zähne|zahn|\bhaare|\bhaut\b|hygiene|körperpflege/,short:'Pflege hält, wenn sie an feste Zeiten gekoppelt ist — morgens und abends, ohne nachzudenken',steps:['Morgen- und Abendroutine komplett durchziehen','Zähne 2× putzen + Zahnseide']},
+    {k:'lesen',re:/liest|\blesen|kapitel|\bbuch|lektüre/,short:'Lesen bleibt, wenn es einen festen Zeitpunkt und einen festen Ort hat',steps:['Zur festen Uhrzeit ein Kapitel lesen','Buch statt Handy mit ins Bett']},
+    {k:'ernaehrung',re:/ernähr|\bessen\b|kalorie|protein|zucker|mahlzeit|diät/,short:'Ernährung folgt der Umgebung: Was griffbereit ist, wird gegessen',steps:['Jede Mahlzeit bewusst nach deinem Ziel wählen','Protein zu jeder Mahlzeit']},
+    {k:'grenzen',re:/erotik|porno|porn|nsfw|pornografie/,short:'Was du lassen willst, lässt du am leichtesten über Reibung und eine Ersatz-Handlung — nicht über Willenskraft',steps:['Handy nachts außerhalb des Schlafzimmers','Bei Drang 10 Minuten raus oder bewegen']},
+    {k:'selbstbild',re:/überzeugt|selbstbewusst|selbstvertrauen|eingebildet|selbstwert/,short:'Echtes Selbstvertrauen entsteht aus gehaltenen Versprechen an dich selbst — nicht aus Selbstgesprächen',steps:['Ein Versprechen an dich heute halten','Abends einen Erfolg des Tages notieren']},
+    {k:'tracking',re:/track|fortschritt|dokumentier|protokoll|messen/,short:'Was du misst, wird sichtbar — und was sichtbar ist, verbessert sich',steps:['Abends in MFM ehrlich einchecken','Wöchentlich deine Zahlen anschauen']},
     {k:'trading',re:/trading|trade|topstep|payout|prop|forex|aktien|chart|algorithmus|algo/,short:'Beim Trading zählt Konsistenz und Risikomanagement, nicht der einzelne Gewinn-Trade',steps:['Jeden Trading-Tag das Risiko pro Trade festlegen','Jeden Trade im Journal festhalten','Regeln vor Markt-Open durchlesen','Wöchentlich die eigenen Trades auswerten']},
-    {k:'coden',re:/app|coden|code|programmier|entwickl|software|projekt bauen/,short:'Software entsteht durch tägliche kleine Fortschritte, nicht durch seltene lange Sessions',steps:['Täglich 30 Min am Projekt/Algorithmus','Jeden Tag eine kleine Funktion fertigstellen','Fortschritt kurz dokumentieren','Eine Ablenkung beim Coden entfernen']},
-    {k:'beziehung',re:/beziehung|partner|freundin|freund|liv|liebe|ehe|familie/,short:'Eine gute Beziehung wächst durch kleine, regelmäßige Aufmerksamkeit — nicht durch große Gesten',steps:['Täglich bewusst Zeit ohne Handy mit ihr','Eine Sache am Tag, die ihr Freude macht','Aktiv zuhören statt nur antworten','Wöchentlich etwas gemeinsam unternehmen']},
+    {k:'beziehung',re:/beziehung|partner|freundin|freund|\bliv\b|liebe|\behe\b|familie/,short:'Eine gute Beziehung wächst durch kleine, regelmäßige Aufmerksamkeit — nicht durch große Gesten',steps:['Täglich bewusst Zeit ohne Handy mit ihr','Eine Sache am Tag, die ihr Freude macht','Aktiv zuhören statt nur antworten','Wöchentlich etwas gemeinsam unternehmen']},
     {k:'disziplin',re:/diszipl|konsequent|durchzieh|alles mache|vornimmt|aufschieb|prokrast|fokus|produktiv/,short:'Disziplin ist kein Charakterzug, sondern ein System aus kleinen, wiederholbaren Routinen',steps:['Jeden Morgen Top-3-Aufgaben festlegen','Schwerste Aufgabe zuerst erledigen','Abends den Tag kurz reflektieren','Handy weglegen bei wichtigen Aufgaben']},
-    {k:'sport',re:/abnehm|gewicht|muskel|fit|ausdauer|lauf|joggen|sport|gym|training/,short:'Körperliche Ziele erreichst du durch Häufigkeit und Konsistenz, nicht durch einzelne extreme Einheiten',steps:['3× pro Woche bewegen','Genug Protein und Wasser täglich','7-8 Stunden Schlaf','Fortschritt notieren']},
-    {k:'geld',re:/geld|sparen|finanz|investier|reich|vermögen|schulden/,short:'Vermögen entsteht durch konstante Gewohnheiten: sparen bevor man ausgibt und Ausgaben sichtbar machen',steps:['Feste Sparrate am Monatsanfang','Ausgaben wöchentlich prüfen','Vor größeren Käufen 24h warten','Einnahmequellen ausbauen']},
+    {k:'sport',re:/abnehm|gewicht|muskel|\bfit|ausdauer|\blauf|joggen|sport|\bgym|training/,short:'Körperliche Ziele erreichst du durch Häufigkeit und Konsistenz, nicht durch einzelne extreme Einheiten',steps:['3× pro Woche bewegen','Genug Protein und Wasser täglich','7-8 Stunden Schlaf','Fortschritt notieren']},
+    {k:'geld',re:/geld|sparen|finanz|investier|\breich\b|reichtum|vermögen|schulden/,short:'Vermögen entsteht durch konstante Gewohnheiten: sparen bevor man ausgibt und Ausgaben sichtbar machen',steps:['Feste Sparrate am Monatsanfang','Ausgaben wöchentlich prüfen','Vor größeren Käufen 24h warten','Einnahmequellen ausbauen']},
     {k:'mental',re:/stress|ruhig|gelassen|angst|mental|achtsam|meditat|selbstvertrauen/,short:'Mentale Stärke wächst durch regelmäßige kleine Pausen und bewusste Reflexion',steps:['Täglich 5 Min bewusst atmen','Eine gute Sache pro Tag aufschreiben','Bildschirmzeit abends begrenzen','Einmal täglich raus an die Luft']},
     {k:'schlaf',re:/schlaf|müde|energie|früh aufstehen|aufstehen|rhythmus/,short:'Guter Schlaf entsteht durch festen Rhythmus und eine ruhige letzte Stunde',steps:['Jeden Tag zur selben Zeit ins Bett','Kein Bildschirm 30 Min vor dem Schlafen','Morgens direkt Tageslicht','Schlafzimmer kühl und dunkel']},
-    {k:'lernen',re:/lernen|studi|skill|fähigkeit|sprache|weiterbild|buch|lesen/,short:'Können entsteht durch tägliche kleine Wiederholung statt seltener langer Sessions',steps:['Täglich 30 Min fokussiert lernen','Kein Multitasking dabei','Wöchentlich Fortschritt festhalten','Eine Ablenkungsquelle entfernen']},
+    {k:'lernen',re:/lernen|studi|skill|fähigkeit|sprache|weiterbild/,short:'Können entsteht durch tägliche kleine Wiederholung statt seltener langer Sessions',steps:['Täglich 30 Min fokussiert lernen','Kein Multitasking dabei','Wöchentlich Fortschritt festhalten','Eine Ablenkungsquelle entfernen']},
   ];
+  // Liste (Zeilen/Striche/Checkboxen): jede Zeile = ein eigener Bereich, in deinen eigenen Worten
+  const lines=String(goal||'').split(/\n+/).map(s=>s.replace(/^\s*(?:[-–•*]|\d+[.)])?\s*(?:\[[ xX]?\])?\s*/,'').trim()).filter(s=>s.length>=4&&!/:\s*$/.test(s));
+  if(lines.length>=2){
+    const used={};const short3=l=>l.replace(/[(),:&]/g,' ').split(/\s+/).filter(Boolean).slice(0,3).join(' ');
+    const strands=lines.slice(0,10).map(line=>{
+      const t=THEMES.find(x=>x.re.test(line.toLowerCase()));
+      let title=t?_TTITLE[t.k]:short3(line);if(used[title])title=short3(line);used[title]=1;
+      return{title,principle:t?t.short+'.':'Jede Handlung ist eine Stimme für die Person, die du werden willst.',step:line.charAt(0).toUpperCase()+line.slice(1),alts:t?t.steps.slice(0,2):[]};
+    });
+    return{principle:`Du hast dein zukünftiges Ich in ${strands.length} Punkten beschrieben. Jeder Punkt wird ein eigener Bereich — dein Coach zeigt dir täglich, woran du heute arbeitest.`,steps:strands.map(s=>s.step),strands};
+  }
   const hits=THEMES.filter(t=>t.re.test(g));
   if(hits.length>=2){
     // Mehrteiliges Ziel: pro erkanntem Bereich ein Schritt, Prinzip fasst die Bereiche zusammen
@@ -455,8 +492,8 @@ function localGoalSuggestions(goal){
   return{principle:'Echte Veränderung entsteht nicht durch große Sprünge, sondern durch kleine Handlungen, die du konsequent wiederholst. Beginne mit dem Kleinsten, das du sicher durchhältst.',steps:['Eine kleine tägliche Gewohnheit wählen','Jeden Tag kurz einchecken','Wöchentlich zurückblicken','Fortschritt sichtbar machen'],
     strands:[{title:'Dranbleiben',principle:'Kleine Handlungen, konsequent wiederholt, verändern mehr als große Vorsätze.',step:'10 Minuten an deinem wichtigsten Ziel arbeiten',alts:['Die kleinste mögliche Version deines Ziels erledigen','Eine Sache tun, die dein zukünftiges Ich stolz macht']}]};
 }
-const _TNAMES={trading:'Trading',coden:'deine App/Code',beziehung:'deine Beziehung',disziplin:'Disziplin',sport:'Fitness',geld:'Finanzen',mental:'mentale Stärke',schlaf:'Schlaf',lernen:'Lernen'};
-const _TTITLE={trading:'Trading',coden:'App & Code',beziehung:'Beziehung',disziplin:'Disziplin',sport:'Fitness',geld:'Finanzen',mental:'Mentale Stärke',schlaf:'Schlaf',lernen:'Lernen'};
+const _TNAMES={pflege:'Selbstpflege',lesen:'Lesen',ernaehrung:'Ernährung',grenzen:'klare Grenzen',selbstbild:'dein Selbstbild',tracking:'Tracking',trading:'Trading',coden:'deine App/Code',beziehung:'deine Beziehung',disziplin:'Disziplin',sport:'Fitness',geld:'Finanzen',mental:'mentale Stärke',schlaf:'Schlaf',lernen:'Lernen'};
+const _TTITLE={pflege:'Selbstpflege',lesen:'Lesen',ernaehrung:'Ernährung',grenzen:'Klare Grenzen',selbstbild:'Selbstbild',tracking:'Fortschritt tracken',trading:'Trading',coden:'App & Code',beziehung:'Beziehung',disziplin:'Disziplin',sport:'Fitness',geld:'Finanzen',mental:'Mentale Stärke',schlaf:'Schlaf',lernen:'Lernen'};
 
 const ARCHETYPES=[
   {ic:'run',t:'Fitter & gesünder',g:'Ich will fitter und gesünder werden — regelmäßig Sport, besser essen, mehr Energie im Alltag.',goals:['3× pro Woche Sport','Genug Wasser trinken täglich','Vor 23 Uhr schlafen']},
@@ -608,17 +645,18 @@ async function ai(msgs,sys,model,maxTok){
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:model||AI_MODEL,max_tokens:maxTok||700,system:sys,messages:msgs})
       });
-      const timeoutP=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Zeitüberschreitung')),45000));
+      const timeoutP=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Zeitüberschreitung')),(maxTok||700)>1500?100000:45000));
       const r=await Promise.race([fetchP,timeoutP]);
       const raw=await r.text();
       let d=null;try{d=JSON.parse(raw);}catch(e){}
       if(!r.ok){_lastAiError=(d&&d.error&&d.error.message)?d.error.message:('HTTP '+r.status+': '+raw.slice(0,160));return {ok:false};}
       _lastAiError='';
       return {ok:true,text:(d&&d.content&&d.content[0]&&d.content[0].text)?d.content[0].text:null};
-    }catch(e){_lastAiError='Netzwerk: '+e.message;return {ok:false};}
+    }catch(e){_lastAiError=(e.message==='Zeitüberschreitung'?'Zeitüberschreitung':'Netzwerk: '+e.message);return {ok:false,retry:e.message!=='Zeitüberschreitung'};}
   };
   let res=await doFetch();
   if(res.ok)return res.text;
+  if(res.retry===false){console.log('ai timeout');return null;}
   await new Promise(r=>setTimeout(r,800));
   res=await doFetch();
   if(res.ok)return res.text;
@@ -1773,7 +1811,7 @@ const PERSIST=['profile','mentor','monthGoals','habits','notifs','partner',
   'partnerCode','referralCode','referralCount','taskTemplate','ach',
   'waveCount','history','streak','isPremium','planType','chIdx','qidx',
   'chAccepted','theme','tmMin',
-  'focusMode','fmStrands','fmPlanSrc','fmAssess','fmLog','fmReviews','weekFocus','fmIntroSeen'];
+  'focusMode','fmStrands','fmPlanSrc','fmPlanV','fmAssess','fmLog','fmReviews','weekFocus','fmIntroSeen'];
 
 // Felder die täglich zurückgesetzt werden
 const DAILY=['tasks','pt','tg','mood','sleep',
@@ -1919,12 +1957,12 @@ function withMonthGoals(st){
   (S.monthGoals||[]).map(g=>g.g).filter(Boolean).forEach(g=>{
     if(!out.some(s=>s.step===g||(s.alts||[]).includes(g)))out.push({title:'Dein Monatsziel',principle:'',step:g,alts:[]});
   });
-  return out.slice(0,6);
+  return out.slice(0,10);
 }
 function ensurePlan(){
-  if(S.fmStrands&&S.fmStrands.length)return;
+  if(S.fmStrands&&S.fmStrands.length&&!(S.fmPlanSrc==='local'&&S.fmPlanV!==2))return;
   S.fmStrands=withMonthGoals(strandsFromSug(localGoalSuggestions(S.profile.goal||'')));
-  S.fmPlanSrc='local';
+  S.fmPlanSrc='local';S.fmPlanV=2;
 }
 let _planTry=false;
 async function bgPlanUpgrade(force){
@@ -2318,9 +2356,9 @@ function EVF(){
     const nm=g('fs-name');if(nm)S.profile.name=nm;const gl=g('fs-goal');if(gl)S.profile.goal=gl;S.profile.why=g('fs-why');S.profile.start=g('fs-start');
     const changed=before!==[S.profile.goal,S.profile.why,S.profile.start].join('|');saveState();
     const b=$('fs-save');if(b)b.textContent=changed?'Gespeichert — erstelle jetzt oben deinen Plan neu':'Gespeichert ✓';setTimeout(()=>R(true),1600);});
-  on('fm-replan',async()=>{const b=$('fm-replan'),st=$('fm-replan-st');if(b){b.disabled=true;b.textContent='Dein Coach baut deinen Plan …';}
+  on('fm-replan',async()=>{const b=$('fm-replan'),st=$('fm-replan-st');if(b){b.disabled=true;b.textContent='Dein Coach baut deinen Plan …';}if(st){st.textContent='Das kann bis zu einer Minute dauern.';st.style.color='var(--mu)';}
     const ok=await bgPlanUpgrade(true);
-    if(!ok){const b2=$('fm-replan'),st2=$('fm-replan-st');if(b2){b2.disabled=false;b2.textContent='Plan mit Coach neu erstellen';}if(st2){st2.textContent='Coach gerade nicht erreichbar'+(_lastAiError?' ('+_lastAiError+')':'')+'. Dein Plan bleibt, wie er ist.';st2.style.color='var(--rd)';}}});
+    if(!ok){const b2=$('fm-replan'),st2=$('fm-replan-st');if(b2){b2.disabled=false;b2.textContent='Plan mit Coach neu erstellen';}if(st2){st2.textContent=(_goalErr==='Antwort unvollständig'?'Die Antwort des Coaches war unvollständig':_goalErr==='Zeitüberschreitung'?'Der Coach hat zu lange gebraucht':'Coach gerade nicht erreichbar'+(_goalErr?' ('+_goalErr+')':''))+'. Dein Plan bleibt, wie er ist — tipp gleich nochmal.';st2.style.color='var(--rd)';}}});
   on('fm-mode',()=>{S.focusMode=false;S.sc='d';R();});
   on('fm-demo',()=>{ensurePlan();const ans=['ja','nein','ja','teil','nein','ja','ja'];const notes=['','zu müde nach der Arbeit','','angefangen, dann am Handy hängen geblieben','lange gearbeitet, keine Zeit mehr','','direkt morgens erledigt'];
     const L=(S.fmLog||[]).slice();
